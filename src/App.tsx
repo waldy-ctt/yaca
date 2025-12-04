@@ -1,37 +1,17 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/electron-vite.animate.svg'
-import './assets/main.css'
-import { Button } from '@/components/ui/button'
+// App.tsx
+import MainPage from "@/pages/mainPages/mainPage";
+import "./assets/main.css";
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
     <>
-      <div>
-        <a href="https://electron-vite.github.io" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+      <div className="min-h-screen h-screen w-screen w-max-screen bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] flex flex-col">
+        <div className="flex-1 flex flex-col">
+          <MainPage />
+        </div>
       </div>
-      <h1 className='text-red-900'>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <Button variant="default">Hello from ShadCN inside Electron!</Button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
     </>
-  )
+  );
 }
 
-export default App
+export default App;
