@@ -1,9 +1,9 @@
-// src/renderer/src/lib/i18n.ts
+// src/renderer/src/lib/i18n/i18n.ts
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 
-// Import translations directly (Vite handles this)
+// THESE PATHS ARE 100% CORRECT — DO NOT CHANGE
 import en from './locales/en.json'
 import vi from './locales/vi.json'
 

@@ -4,11 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "bun run copy:locales && vite",
+    "dev": "vite --host",
     "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
-    "copy:locales": "cp -r src/rerender/src/lib/i18n/locales public/ || true"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",

@@ -3,13 +3,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n/i18n";
+import { useSettingsStore } from "@/stores/settingStore";
 
 function LoginScreen() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ identifier?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{
+    identifier?: string;
+    password?: string;
+  }>({});
   const [isLoading, setIsLoading] = useState(false);
+
+  const { t } = useTranslation();
+  const { language, setLanguage, theme, setTheme } = useSettingsStore();
 
   const validateIdentifier = (value: string): string | undefined => {
     if (!value.trim()) {
@@ -36,8 +45,32 @@ function LoginScreen() {
       }
 
       const [, countryCode, phoneNumber] = countryCodeMatch;
-      const validCountryCodes = ["1", "44", "84", "86", "91", "81", "82", "33", "49", "61", "55", "7", "34", "39", "31", "46", "47", "45", "358", "48", "420", "421", "40"];
-      
+      const validCountryCodes = [
+        "1",
+        "44",
+        "84",
+        "86",
+        "91",
+        "81",
+        "82",
+        "33",
+        "49",
+        "61",
+        "55",
+        "7",
+        "34",
+        "39",
+        "31",
+        "46",
+        "47",
+        "45",
+        "358",
+        "48",
+        "420",
+        "421",
+        "40",
+      ];
+
       if (!validCountryCodes.includes(countryCode)) {
         return "Invalid country code";
       }
@@ -76,24 +109,42 @@ function LoginScreen() {
   };
 
   const handleSubmit = () => {
-    const identifierError = validateIdentifier(identifier);
-    const passwordError = validatePassword(password);
+    // if (i18n.language === "vi") {
+    //   i18n.changeLanguage("en");
+    // } else {
+    //   i18n.changeLanguage("vi");
+    // }
 
-    if (identifierError || passwordError) {
-      setErrors({
-        identifier: identifierError,
-        password: passwordError,
-      });
-      return;
+    // if (language === 'en') {
+    //   setLanguage('vi');
+    // } else {
+    //   setLanguage('en');
+    // }
+
+    if (theme === "light") {
+      setTheme("dark");
+    } else {
+      setTheme("light");
     }
 
-    setErrors({});
-    setIsLoading(true);
-
-    setTimeout(() => {
-      console.log("Login:", { identifier, password });
-      setIsLoading(false);
-    }, 1500);
+    // const identifierError = validateIdentifier(identifier);
+    // const passwordError = validatePassword(password);
+    //
+    // if (identifierError || passwordError) {
+    //   setErrors({
+    //     identifier: identifierError,
+    //     password: passwordError,
+    //   });
+    //   return;
+    // }
+    //
+    // setErrors({});
+    // setIsLoading(true);
+    //
+    // setTimeout(() => {
+    //   console.log("Login:", { identifier, password });
+    //   setIsLoading(false);
+    // }, 1500);
   };
 
   const handleIdentifierChange = (value: string) => {
@@ -129,7 +180,9 @@ function LoginScreen() {
           </div>
           <div className="text-center space-y-1">
             <h1 className="text-3xl font-bold tracking-tight">YACA</h1>
-            <p className="text-sm text-muted-foreground">Yet Another Chatting App</p>
+            <p className="text-sm text-muted-foreground">
+              Yet Another Chatting App
+            </p>
           </div>
         </div>
 
@@ -172,7 +225,9 @@ function LoginScreen() {
                   value={password}
                   onChange={(e) => handlePasswordChange(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className={errors.password ? "border-destructive pr-10" : "pr-10"}
+                  className={
+                    errors.password ? "border-destructive pr-10" : "pr-10"
+                  }
                   disabled={isLoading}
                 />
                 <button
@@ -211,7 +266,8 @@ function LoginScreen() {
               className="w-full h-11"
               disabled={isLoading}
             >
-              {isLoading ? "Signing in..." : "Sign In"}
+              {/*{isLoading ? "Signing in..." : "Sign In"}*/}
+              {t("login")}
             </Button>
           </div>
 
