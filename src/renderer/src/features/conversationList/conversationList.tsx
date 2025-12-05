@@ -1,12 +1,11 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import { Pin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Menu, Search } from "lucide-react";
 import MainPageSheet from "./components/mainPageSheet";
-import { getInitials } from "@/shared/utils";
 
-function MainPage() {
+function ConversationListScreen() {
   return (
     <div className="w-full h-full flex flex-col">
       <div className="w-full h-16 bg-popover flex justify-center items-center text-popover-foreground">
@@ -20,7 +19,7 @@ function MainPage() {
   );
 }
 
-export default MainPage;
+export default ConversationListScreen;
 
 function ConversationList() {
   const pinnedConversation = [];

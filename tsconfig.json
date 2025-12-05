@@ -24,7 +24,7 @@
     "paths": {
       "@/*": ["src/renderer/src/*"],
       "@renderer/*": ["src/renderer/src/*"],
-      "src/*": ["../*"]
+      "@main/*": ["src/*"]
     }
   },
   "include": ["src", "electron"],
