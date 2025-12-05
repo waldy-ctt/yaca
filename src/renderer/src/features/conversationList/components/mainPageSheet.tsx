@@ -9,8 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { User, Settings, Info } from "lucide-react";
 import UserInfo from "./userInfo";
-import { presence_status } from "@/types";
+import { presence_status, ROUTES } from "@/types";
 import { useUserStore } from "@/stores/userStore";
+import { useAuthStore } from "@/stores/authStore";
+import { router } from "@/routes";
+import { useSettingsStore } from "@/stores/settingStore";
+import { t } from "i18next";
 
 interface MainPageSheetProps {
   children: React.ReactNode;
@@ -24,7 +28,9 @@ const statusConfig = {
 };
 
 function MainPageSheet({ children }: MainPageSheetProps) {
+  const { language, setLanguage, theme, setTheme } = useSettingsStore();
   const { user, updateUser } = useUserStore();
+  const { logout } = useAuthStore();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
@@ -69,16 +75,20 @@ function MainPageSheet({ children }: MainPageSheetProps) {
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent"
-              onClick={() => handleNavigation("/profile")}
+              onClick={() => {
+                setLanguage(language === 'vi' ? 'en' : 'vi')
+              }}
             >
               <User className="size-5" />
-              <span>My Profile</span>
+              <span>{t('my_profile')}</span>
             </Button>
 
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent"
-              onClick={() => handleNavigation("/settings")}
+              onClick={() => {
+                setTheme(theme === 'light' ? 'dark' : 'light')
+              }}
             >
               <Settings className="size-5" />
               <span>Settings</span>
@@ -87,7 +97,10 @@ function MainPageSheet({ children }: MainPageSheetProps) {
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent"
-              onClick={() => handleNavigation("/about")}
+              onClick={() => {
+                logout();
+                router.navigate({to: ROUTES.LOGIN})
+              }}
             >
               <Info className="size-5" />
               <span>About</span>

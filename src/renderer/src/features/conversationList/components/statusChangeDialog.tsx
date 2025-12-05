@@ -1,5 +1,5 @@
 import {
-  Dialog,
+ Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,

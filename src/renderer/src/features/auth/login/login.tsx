@@ -6,6 +6,9 @@ import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import i18n from "@/lib/i18n/i18n";
 import { useSettingsStore } from "@/stores/settingStore";
+import { useAuthStore } from "@/stores/authStore";
+import { presence_status, ROUTES } from "@/types";
+import { router } from "@/routes";
 
 function LoginScreen() {
   const [identifier, setIdentifier] = useState("");
@@ -19,112 +22,25 @@ function LoginScreen() {
 
   const { t } = useTranslation();
   const { language, setLanguage, theme, setTheme } = useSettingsStore();
-
-  const validateIdentifier = (value: string): string | undefined => {
-    if (!value.trim()) {
-      return "Identifier is required";
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (emailRegex.test(value)) {
-      return undefined;
-    }
-
-    // Phone number validation
-    const phoneRegex = /^\+?\d+$/;
-    if (!phoneRegex.test(value)) {
-      return "Invalid format. Use email or phone number";
-    }
-
-    // Phone with country code
-    if (value.startsWith("+")) {
-      const countryCodeMatch = value.match(/^\+(\d{1,3})(\d+)$/);
-      if (!countryCodeMatch) {
-        return "Invalid phone format";
-      }
-
-      const [, countryCode, phoneNumber] = countryCodeMatch;
-      const validCountryCodes = [
-        "1",
-        "44",
-        "84",
-        "86",
-        "91",
-        "81",
-        "82",
-        "33",
-        "49",
-        "61",
-        "55",
-        "7",
-        "34",
-        "39",
-        "31",
-        "46",
-        "47",
-        "45",
-        "358",
-        "48",
-        "420",
-        "421",
-        "40",
-      ];
-
-      if (!validCountryCodes.includes(countryCode)) {
-        return "Invalid country code";
-      }
-
-      if (phoneNumber.length !== 9) {
-        return "Phone number must be 9 digits after country code";
-      }
-
-      return undefined;
-    }
-
-    // Phone without country code
-    if (value.startsWith("0")) {
-      if (value.length !== 10) {
-        return "Phone number starting with 0 must be 10 digits";
-      }
-      return undefined;
-    }
-
-    // Phone without country code, not starting with 0
-    if (value.length !== 9) {
-      return "Phone number must be 9 digits";
-    }
-
-    return undefined;
-  };
-
-  const validatePassword = (value: string): string | undefined => {
-    if (!value) {
-      return "Password is required";
-    }
-    if (value.length < 6) {
-      return "Password must be at least 6 characters";
-    }
-    return undefined;
-  };
+  const { login } = useAuthStore();
 
   const handleSubmit = () => {
-    // if (i18n.language === "vi") {
-    //   i18n.changeLanguage("en");
-    // } else {
-    //   i18n.changeLanguage("vi");
-    // }
-
-    // if (language === 'en') {
-    //   setLanguage('vi');
-    // } else {
-    //   setLanguage('en');
-    // }
-
-    if (theme === "light") {
-      setTheme("dark");
-    } else {
-      setTheme("light");
+    if (identifier === "test@gmail.com" && password === "sieunhan1234") {
+      login(
+        {
+          avatar: null,
+          bio: "This is test account",
+          email: identifier,
+          id: "123",
+          name: "Test",
+          status: presence_status.ONLINE,
+          tel: "0859853463",
+          username: "@supertest",
+        },
+        "this_is_a_token",
+      );
+      console.log("AAA");
+      router.navigate({ to: ROUTES.HOME });
     }
 
     // const identifierError = validateIdentifier(identifier);
@@ -188,22 +104,22 @@ function LoginScreen() {
 
         <div className="bg-card rounded-xl border p-6 space-y-6">
           <div className="space-y-2 text-center">
-            <h2 className="text-2xl font-semibold">Welcome back</h2>
+            <h2 className="text-2xl font-semibold">{t("welcome_back")}</h2>
             <p className="text-sm text-muted-foreground">
-              Sign in to continue to your account
+              {t("sign_in_greeting")}
             </p>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="identifier">Email or Phone</Label>
+              <Label htmlFor="identifier">Email</Label>
               <Input
                 id="identifier"
                 type="text"
-                placeholder="user@example.com or +84912345678"
+                placeholder="user@example.com"
                 value={identifier}
                 onChange={(e) => handleIdentifierChange(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyPress}
                 className={errors.identifier ? "border-destructive" : ""}
                 disabled={isLoading}
               />
@@ -216,15 +132,15 @@ function LoginScreen() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("password")}</Label>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
+                  placeholder={t("enter_your_password")}
                   value={password}
                   onChange={(e) => handlePasswordChange(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyPress}
                   className={
                     errors.password ? "border-destructive pr-10" : "pr-10"
                   }
@@ -257,7 +173,7 @@ function LoginScreen() {
                 className="text-sm text-primary hover:underline focus:outline-none"
                 onClick={() => console.log("Navigate to forgot password")}
               >
-                Forgot password?
+                {t("forgot_password")}
               </button>
             </div>
 
@@ -266,8 +182,7 @@ function LoginScreen() {
               className="w-full h-11"
               disabled={isLoading}
             >
-              {/*{isLoading ? "Signing in..." : "Sign In"}*/}
-              {t("login")}
+              {isLoading ? t("login...") : t("login")}
             </Button>
           </div>
 
@@ -278,7 +193,7 @@ function LoginScreen() {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-card px-2 text-muted-foreground">
-                  Don't have an account?
+                  {t("dont_have_account")}
                 </span>
               </div>
             </div>
@@ -289,13 +204,13 @@ function LoginScreen() {
               onClick={handleSignupNavigation}
               disabled={isLoading}
             >
-              Create Account
+              {t("create_account")}
             </Button>
           </div>
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          Created by Le Thanh Hieu (waldy-ctt) & Nguyen Phuc Hau (Ng-Behind7)
+          {t("credit")}
         </p>
       </div>
     </div>

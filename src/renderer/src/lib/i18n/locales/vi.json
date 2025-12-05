@@ -1,6 +1,7 @@
 {
   "welcome": "Chào mừng quay lại",
   "login": "Đăng nhập",
+  "login...": "Đăng nhập...",
   "logout": "Đăng xuất",
   "settings": "Cài đặt",
   "profile": "Hồ sơ",
@@ -9,5 +10,18 @@
   "theme": "Giao diện",
   "light": "Sáng",
   "dark": "Tối",
-  "system": "Hệ thống"
+  "system": "Hệ thống",
+  "credit": "Làm bởi Lê Thanh Hiếu (waldy-ctt) & Nguyễn Phúc Hậu (Ng-Behind7)",
+  "create_account": "Tạo tài khoản",
+  "dont_have_account": "Không có tài khoản?",
+  "forgot_password": "Quên mật khẩu?",
+  "password": "Mật khẩu",
+  "enter_your_password": "Mật khẩu của bạn",
+  "sign_in_greeting": "Đăng nhập để tiếp tục sử dụng",
+  "welcome_back": "Chào mừng trở lại",
+  "online": "Trực tuyến",
+  "offline": "Ngoại tuyến",
+  "sleep": "Ngủ",
+  "dnd": "Không Làm Phiền",
+  "my_profile": "Hồ sơ"
 }
