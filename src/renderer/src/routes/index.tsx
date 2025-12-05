@@ -1,46 +1,31 @@
-// render/src/routes/index.tsx  ← REPLACE ENTIRE FILE
+// src/renderer/src/routes/index.tsx
 import { createRouter, createRootRoute, createRoute } from '@tanstack/react-router'
-import { Root } from './components/base/Root'
-import { PublicLayout } from './components/base/PublicLayout'
-import { ProtectedLayout } from './components/base/ProtectedLayout'
 import { LoginRoute } from './components/LoginRoute'
 import { ConversationListRoute } from './components/ConversationListRoute'
-import { ROUTES } from '@/types'
+import { RootLayout } from './components/base/RootLayout'
 
-const rootRoute = createRootRoute({ component: Root })
-
-// Public login — real path
-const loginRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: ROUTES.LOGIN,
-  component: () => (
-    <PublicLayout>
-      <LoginRoute />
-    </PublicLayout>
-  ),
+const rootRoute = createRootRoute({
+  component: RootLayout,
 })
 
-// Protected area — home is root
-const protectedLayout = createRoute({
+const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/',
-  component: ProtectedLayout,
+  path: '/login',
+  component: LoginRoute,
 })
 
 const homeRoute = createRoute({
-  getParentRoute: () => protectedLayout,
+  getParentRoute: () => rootRoute,
   path: '/',
   component: ConversationListRoute,
 })
 
-// Tree — order no longer matters!
-const routeTree = rootRoute.addChildren([
-  loginRoute,
-  protectedLayout.addChildren([homeRoute]),
-])
+const routeTree = rootRoute.addChildren([loginRoute, homeRoute])
 
 export const router = createRouter({ routeTree })
 
 declare module '@tanstack/react-router' {
-  interface Register { router: typeof router }
+  interface Register {
+    router: typeof router
+  }
 }

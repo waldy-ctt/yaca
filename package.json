@@ -4,10 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "bun run copy:locales && vite",
     "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "copy:locales": "cp -r src/rerender/src/lib/i18n/locales public/ || true"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
@@ -22,9 +23,12 @@
     "clsx": "^2.1.1",
     "d3-scale": "^4.0.2",
     "d3-shape": "^3.2.0",
+    "i18next": "^25.7.1",
+    "i18next-browser-languagedetector": "^8.2.0",
     "lucide-react": "^0.555.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-i18next": "^16.3.5",
     "tailwind-merge": "^3.4.0",
     "zustand": "^5.0.9"
   },

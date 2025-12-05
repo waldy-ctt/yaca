@@ -1,0 +1,13 @@
+{
+  "welcome": "Welcome back",
+  "login": "Sign In",
+  "logout": "Logout",
+  "settings": "Settings",
+  "profile": "Profile",
+  "about": "About",
+  "language": "Language",
+  "theme": "Theme",
+  "light": "Light",
+  "dark": "Dark",
+  "system": "System"
+}
