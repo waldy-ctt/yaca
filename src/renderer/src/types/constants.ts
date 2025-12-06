@@ -4,6 +4,7 @@ export const ROUTES = {
   LOGIN: "/login",
   HOME: "/",
   SETTINGS: "/settings",
+  SIGNUP: "/signup"
 } as const;
 
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

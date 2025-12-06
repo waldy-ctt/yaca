@@ -84,7 +84,7 @@ function LoginScreen() {
   };
 
   const handleSignupNavigation = () => {
-    console.log("Navigate to signup");
+    router.navigate({ to: ROUTES.SIGNUP });
   };
 
   return (
