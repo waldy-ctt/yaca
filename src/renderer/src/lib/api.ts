@@ -2,7 +2,8 @@
 import { useAuthStore } from '@/stores/authStore'
 import { router } from '@/routes'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+// const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 class ApiError extends Error {
   constructor(
@@ -49,8 +50,8 @@ export async function api<T = unknown>(
 
 // Helper methods
 export const apiGet = (url: string) => api(url, { method: 'GET' })
-export const apiPost = (url: string, body?: null) =>
+export const apiPost = (url: string, body?: null | object) =>
   api(url, { method: 'POST', body: body ? JSON.stringify(body) : undefined })
-export const apiPut = (url: string, body?: null) =>
+export const apiPut = (url: string, body?: null | object) =>
   api(url, { method: 'PUT', body: body ? JSON.stringify(body) : undefined })
 export const apiDelete = (url: string) => api(url, { method: 'DELETE' })

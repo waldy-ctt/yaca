@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
+import { EMAIL_REGEX } from "@/types";
+import { t } from "i18next";
+import { apiPost } from "@/lib/api";
 
 function SignupScreen() {
   const [email, setEmail] = useState("");
@@ -19,8 +22,7 @@ function SignupScreen() {
 
   const validateEmail = (email: string) => {
     if (!email) return "Email is required";
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) return "Please enter a valid email";
+    if (!EMAIL_REGEX.test(email)) return "Please enter a valid email";
     return undefined;
   };
 
@@ -38,7 +40,7 @@ function SignupScreen() {
 
   const getPasswordStrength = (password: string) => {
     if (!password) return { strength: 0, label: "", color: "" };
-    
+
     let strength = 0;
     if (password.length >= 8) strength++;
     if (password.length >= 12) strength++;
@@ -46,15 +48,25 @@ function SignupScreen() {
     if (/\d/.test(password)) strength++;
     if (/[^a-zA-Z0-9]/.test(password)) strength++;
 
-    if (strength <= 2) return { strength, label: "Weak", color: "text-destructive" };
-    if (strength <= 3) return { strength, label: "Fair", color: "text-yellow-500" };
-    if (strength <= 4) return { strength, label: "Good", color: "text-blue-500" };
+    if (strength <= 2)
+      return { strength, label: "Weak", color: "text-destructive" };
+    if (strength <= 3)
+      return { strength, label: "Fair", color: "text-yellow-500" };
+    if (strength <= 4)
+      return { strength, label: "Good", color: "text-blue-500" };
     return { strength, label: "Strong", color: "text-green-500" };
   };
 
   const passwordStrength = getPasswordStrength(password);
 
   const handleSubmit = () => {
+    apiPost('/users/signup', {
+      email: 'clocktoktok@gmail.com',
+      password: 'Sieunhan1234!',
+      name: "waldy",
+      username: 'waldyctt',
+      tel: '+84859853463'
+    })
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
     const confirmPasswordError = validateConfirmPassword(confirmPassword);
@@ -71,12 +83,6 @@ function SignupScreen() {
     setErrors({});
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Signup:", { email, password });
-      setIsLoading(false);
-      // Handle successful signup (navigate to login or home)
-    }, 1500);
   };
 
   const handleEmailChange = (value: string) => {
@@ -186,7 +192,7 @@ function SignupScreen() {
                   )}
                 </button>
               </div>
-              
+
               {/* Password Strength Indicator */}
               {password && !errors.password && (
                 <div className="space-y-2">
@@ -197,10 +203,10 @@ function SignupScreen() {
                           passwordStrength.strength <= 2
                             ? "bg-destructive"
                             : passwordStrength.strength <= 3
-                            ? "bg-yellow-500"
-                            : passwordStrength.strength <= 4
-                            ? "bg-blue-500"
-                            : "bg-green-500"
+                              ? "bg-yellow-500"
+                              : passwordStrength.strength <= 4
+                                ? "bg-blue-500"
+                                : "bg-green-500"
                         }`}
                         style={{
                           width: `${(passwordStrength.strength / 5) * 100}%`,
@@ -218,7 +224,7 @@ function SignupScreen() {
                   </p>
                 </div>
               )}
-              
+
               {errors.password && (
                 <p className="text-sm text-destructive flex items-center gap-1">
                   <AlertCircle className="size-3" />
@@ -258,12 +264,14 @@ function SignupScreen() {
                   )}
                 </button>
               </div>
-              {confirmPassword && !errors.confirmPassword && confirmPassword === password && (
-                <p className="text-sm text-green-500 flex items-center gap-1">
-                  <CheckCircle2 className="size-3" />
-                  Passwords match
-                </p>
-              )}
+              {confirmPassword &&
+                !errors.confirmPassword &&
+                confirmPassword === password && (
+                  <p className="text-sm text-green-500 flex items-center gap-1">
+                    <CheckCircle2 className="size-3" />
+                    Passwords match
+                  </p>
+                )}
               {errors.confirmPassword && (
                 <p className="text-sm text-destructive flex items-center gap-1">
                   <AlertCircle className="size-3" />
@@ -308,7 +316,7 @@ function SignupScreen() {
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground">
-          By creating an account, you agree to our Terms and Privacy Policy
+          {t("create_account_accept_policy")}
         </p>
       </div>
     </div>

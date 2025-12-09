@@ -9,6 +9,7 @@ import { useSettingsStore } from "@/stores/settingStore";
 import { useAuthStore } from "@/stores/authStore";
 import { presence_status, ROUTES } from "@/types";
 import { router } from "@/routes";
+import { apiPost } from "@/lib/api";
 
 function LoginScreen() {
   const [identifier, setIdentifier] = useState("");
@@ -24,21 +25,27 @@ function LoginScreen() {
   const { language, setLanguage, theme, setTheme } = useSettingsStore();
   const { login } = useAuthStore();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    const data = await apiPost("/users/login", {
+      identifier: "clocktoktok@gmail.com",
+      password: "Sieunhan1234!",
+    });
+
+    console.log("Work a holy shit: ", data);
     if (identifier === "test@gmail.com" && password === "sieunhan1234") {
-      login(
-        {
-          avatar: null,
-          bio: "This is test account",
-          email: identifier,
-          id: "123",
-          name: "Test",
-          status: presence_status.ONLINE,
-          tel: "0859853463",
-          username: "@supertest",
-        },
-        "this_is_a_token",
-      );
+      // login(
+      //   {
+      //     avatar: null,
+      //     bio: "This is test account",
+      //     email: identifier,
+      //     id: "123",
+      //     name: "Test",
+      //     status: presence_status.ONLINE,
+      //     tel: "0859853463",
+      //     username: "@supertest",
+      //   },
+      //   "this_is_a_token",
+      // );
       console.log("AAA");
       router.navigate({ to: ROUTES.HOME });
     }
