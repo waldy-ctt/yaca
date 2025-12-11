@@ -2,14 +2,18 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, TriangleAlertIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import i18n from "@/lib/i18n/i18n";
-import { useSettingsStore } from "@/stores/settingStore";
 import { useAuthStore } from "@/stores/authStore";
 import { presence_status, ROUTES } from "@/types";
 import { router } from "@/routes";
 import { apiPost } from "@/lib/api";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import {
+  validateEmail,
+  validateIdentifier,
+  validatePassword,
+} from "@/lib/utils";
 
 function LoginScreen() {
   const [identifier, setIdentifier] = useState("");
@@ -18,56 +22,56 @@ function LoginScreen() {
   const [errors, setErrors] = useState<{
     identifier?: string;
     password?: string;
+    api?: string;
   }>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const { t } = useTranslation();
-  const { language, setLanguage, theme, setTheme } = useSettingsStore();
   const { login } = useAuthStore();
 
   const handleSubmit = async () => {
-    const data = await apiPost("/users/login", {
-      identifier: "clocktoktok@gmail.com",
-      password: "Sieunhan1234!",
-    });
+    // if (identifier.trim().length === 0 || password.trim().length === 0) return;
+    // setIsLoading(true);
 
-    console.log("Work a holy shit: ", data);
-    if (identifier === "test@gmail.com" && password === "sieunhan1234") {
-      // login(
-      //   {
-      //     avatar: null,
-      //     bio: "This is test account",
-      //     email: identifier,
-      //     id: "123",
-      //     name: "Test",
-      //     status: presence_status.ONLINE,
-      //     tel: "0859853463",
-      //     username: "@supertest",
-      //   },
-      //   "this_is_a_token",
-      // );
-      console.log("AAA");
-      router.navigate({ to: ROUTES.HOME });
+    const identifierValid = validateEmail(identifier);
+    const passwordValid = validatePassword(password);
+
+    if (!identifierValid || !passwordValid) {
+      setErrors({
+        identifier: identifierValid ? undefined : "This must be valid email",
+        password: passwordValid ? undefined : "This must be valid password",
+        api: undefined,
+      });
+      return;
     }
 
-    // const identifierError = validateIdentifier(identifier);
-    // const passwordError = validatePassword(password);
-    //
-    // if (identifierError || passwordError) {
-    //   setErrors({
-    //     identifier: identifierError,
-    //     password: passwordError,
-    //   });
-    //   return;
-    // }
-    //
-    // setErrors({});
-    // setIsLoading(true);
-    //
-    // setTimeout(() => {
-    //   console.log("Login:", { identifier, password });
-    //   setIsLoading(false);
-    // }, 1500);
+    setErrors({});
+    setIsLoading(true);
+    try {
+      const data: any = await apiPost("/users/login", {
+        identifier: identifier,
+        password: password,
+      });
+
+      login(
+        {
+          avatar: data.user?.avatar ?? null,
+          bio: data.user?.bio ?? "",
+          email: data.user?.email ?? "",
+          id: data.user?.id ?? "",
+          name: data.user?.name ?? "",
+          status: data.user?.status ?? presence_status.ONLINE,
+          tel: data.user?.tel ?? "",
+          username: data.user?.username ?? "",
+        },
+        data.token,
+      );
+
+      router.navigate({ to: ROUTES.HOME });
+    } catch (e: any) {
+      setErrors({ identifier: undefined, password: undefined, api: e.message });
+    }
+    setIsLoading(false);
   };
 
   const handleIdentifierChange = (value: string) => {
@@ -215,6 +219,13 @@ function LoginScreen() {
             </Button>
           </div>
         </div>
+
+        {errors.api && (
+          <Alert variant="destructive">
+            <TriangleAlertIcon />
+            <AlertTitle>{errors.api}</AlertTitle>
+          </Alert>
+        )}
 
         <p className="text-center text-xs text-muted-foreground">
           {t("credit")}
