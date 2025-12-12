@@ -1,32 +1,54 @@
 import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-
-// The Hooks & Components we built
+import { UIMessage } from "@/types";
 import { useChat } from "./hooks/useChat";
-import { MessageItem } from "./components/MessageItem";
+import { ChatHeader } from "./components/ChatHeader";
+import { MessageList } from "./components/MessageList";
 import { ChatInput } from "./components/ChatInput";
-// (You'll need to create a simple Header component similarly, or inline it for now)
+import { MessageDetailSheet } from "./components/MessageDetailSheet";
+import { UserSideSheet } from "./components/UserSideSheet";
 
 function ConversationScreen() {
-  // 1. Logic
-  const { conversationId } = useParams({ from: '/conversation/$conversationId' });
-  const { messages, isLoading, sendMessage, scrollToBottomRef } = useChat(conversationId);
+  const { conversationId } = useParams({
+    from: "/conversation/$conversationId",
+  });
 
-  // 2. Local UI State
+  const { messages, conversation, isLoading, sendMessage, scrollToBottomRef } =
+    useChat(conversationId);
+
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedMessage, setSelectedMessage] = useState<UIMessage | null>(
+    null,
+  );
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isUserSheetOpen, setIsUserSheetOpen] = useState(false);
 
-  // 3. Handlers (That connect UI to Logic)
   const handleToggleSelect = (id: string) => {
     const next = new Set(selectedIds);
     if (next.has(id)) next.delete(id);
     else next.add(id);
+
     setSelectedIds(next);
     if (next.size === 0) setSelectionMode(false);
   };
 
-  if (isLoading && conversationId !== 'new') {
+  const handleMessagePress = (msg: UIMessage) => {
+    if (selectionMode) {
+      handleToggleSelect(msg.id);
+    } else {
+      setSelectedMessage(msg);
+      setIsDetailOpen(true);
+    }
+  };
+
+  const handleLongPress = (id: string) => {
+    setSelectionMode(true);
+    setSelectedIds(new Set([id]));
+  };
+
+  if (isLoading && conversationId !== "new") {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -35,39 +57,62 @@ function ConversationScreen() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      
-      {/* HEADER (Simplify or extract this later) */}
-      <header className="h-16 border-b flex items-center px-4 shrink-0">
-        <h1 className="font-bold text-lg">
-           {/* TODO: Add proper header with user info from useChat() */}
-           Chat
-        </h1>
-      </header>
-
-      {/* MESSAGE LIST */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
-          <MessageItem
-            key={msg.id}
-            message={msg}
-            selectionMode={selectionMode}
-            isSelected={selectedIds.has(msg.id)}
-            onPress={() => console.log("Pressed", msg.id)}
-            onLongPress={() => {
-              setSelectionMode(true);
-              setSelectedIds(new Set([msg.id]));
-            }}
-            onToggleSelect={() => handleToggleSelect(msg.id)}
-          />
-        ))}
-        {/* Invisible div to scroll to */}
-        <div ref={scrollToBottomRef} />
+    <div className="flex flex-col h-screen bg-background relative">
+      <div
+        onClick={() => {
+          setIsUserSheetOpen(true);
+        }}
+        className="cursor-pointer"
+      >
+        <ChatHeader
+          conversation={conversation}
+          // draftName={draftUser?.name}
+          // draftAvatar={draftUser?.avatar}
+          // draftStatus={draftUser?.status}
+          draftName={""}
+          draftAvatar={""}
+          draftStatus={""}
+        />
       </div>
 
+      {/* MESSAGE LIST */}
+      <MessageList
+        messages={messages}
+        selectionMode={selectionMode}
+        selectedIds={selectedIds}
+        onPress={handleMessagePress}
+        onLongPress={handleLongPress}
+        onToggleSelect={handleToggleSelect}
+        scrollRef={scrollToBottomRef}
+      />
+
       {/* INPUT AREA */}
-      <ChatInput onSend={sendMessage} />
-      
+      <ChatInput onSend={sendMessage} disabled={isLoading} />
+
+      {/* --- OVERLAYS --- */}
+
+      {/* 1. Message Details (Reactions, Copy, Delete) */}
+      <MessageDetailSheet
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        message={selectedMessage}
+        onReaction={(emoji) => {
+          console.log("TODO: React with", emoji, "to", selectedMessage?.id);
+          // Implement ws.send("REACT_MESSAGE", ...) in useChat later
+        }}
+        onDelete={() => {
+          console.log("TODO: Delete message", selectedMessage?.id);
+          // Implement ws.send("DELETE_MESSAGE", ...) in useChat later
+        }}
+      />
+
+      {/* 2. User/Group Info Side Sheet */}
+      <UserSideSheet
+        isOpen={isUserSheetOpen}
+        onClose={() => setIsUserSheetOpen(false)}
+        // Pass either the full conversation or just the draft user info
+        data={conversation}
+      />
     </div>
   );
 }

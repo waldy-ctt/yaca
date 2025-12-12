@@ -1,19 +1,25 @@
 import { useState, useEffect, useRef } from "react";
-import { useSearch } from "@tanstack/react-router"; 
+import { useSearch } from "@tanstack/react-router";
 import { ws, apiGet, apiPost } from "@/lib/api";
-import { MessageModel, ConversationModel, UIMessage } from "@/types"; // Import UIMessage!
+import {
+  MessageModel,
+  ConversationModel,
+  UIMessage,
+  MessageDto,
+} from "@/types"; // Import UIMessage!
 import { useAuthStore } from "@/stores/authStore";
 
 interface ChatSearchParams {
   recipientId?: string;
 }
-
+type SingleDtoItem = MessageDto["data"][number];
 export function useChat(conversationId: string) {
   const { user } = useAuthStore();
-  
-  // 1. STATE: Strictly typed as UIMessage[]
+
   const [messages, setMessages] = useState<UIMessage[]>([]);
-  const [conversation, setConversation] = useState<ConversationModel | null>(null);
+  const [conversation, setConversation] = useState<ConversationModel | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   const searchParams = useSearch({ strict: false }) as ChatSearchParams;
@@ -23,12 +29,16 @@ export function useChat(conversationId: string) {
   // ----------------------------------------------------------------
   // ⚡ HELPER: The "Bridge" from Raw Data to UI Data
   // ----------------------------------------------------------------
-  const mapToUIMessage = (raw: MessageModel): UIMessage => {
+  const mapToUIMessage = (raw: SingleDtoItem): UIMessage => {
     return {
-      ...raw,
+      id: raw.id,
+      content: raw.content,
+      conversationId: raw.conversationId,
+      createdAt: raw.createdAt,
+      reaction: raw.reaction,
+      senderId: raw.senderId,
       isMine: raw.senderId === user?.id,
-      // Default status for history is 'read' (or calculate based on raw.isRead)
-      status: "read" 
+      status: "read",
     };
   };
 
@@ -45,16 +55,14 @@ export function useChat(conversationId: string) {
       setIsLoading(true);
       try {
         const [msgsData, convData] = await Promise.all([
-          apiGet<MessageModel[]>(`/conversation/${conversationId}/messages`),
-          apiGet<ConversationModel>(`/conversation/${conversationId}`)
+          apiGet<MessageDto>(`/messages/${conversationId}`),
+          apiGet<ConversationModel>(`/conversation/${conversationId}`),
         ]);
 
-        if (msgsData) {
-          // ✅ FIX: Convert raw array to UI array before setting state
-          setMessages(msgsData.map(mapToUIMessage));
+        if (msgsData.data.length > 0) {
+          setMessages(msgsData.data.map(mapToUIMessage));
         }
         if (convData) setConversation(convData);
-
       } catch (error) {
         console.error("Failed to load chat data", error);
       } finally {
@@ -70,27 +78,34 @@ export function useChat(conversationId: string) {
   // ----------------------------------------------------------------
   useEffect(() => {
     const unsubscribeNew = ws.subscribe("NEW_MESSAGE", (payload) => {
-      const rawMsg = payload.message;
+      const rawMsg = payload.message as unknown as SingleDtoItem;
 
       if (rawMsg.conversationId === conversationId) {
-        // ✅ FIX: Convert raw message to UI message on the fly
         const uiMsg = mapToUIMessage(rawMsg);
 
         setMessages((prev) => {
-          if (prev.some(m => m.id === uiMsg.id)) return prev;
+          if (prev.some((m) => m.id === uiMsg.id)) return prev;
           return [...prev, uiMsg];
         });
 
-        setTimeout(() => scrollToBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+        setTimeout(
+          () =>
+            scrollToBottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+          100,
+        );
       }
     });
 
     const unsubscribeAck = ws.subscribe("ACK", (payload) => {
-       if (payload.message.conversationId === conversationId) {
-          setMessages(prev => 
-            prev.map(m => m.id === payload.tempId ? { ...m, status: "sent", id: payload.message.id } : m)
-          );
-       }
+      if (payload.message.conversationId === conversationId) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === payload.tempId
+              ? { ...m, status: "sent", id: payload.message.id }
+              : m,
+          ),
+        );
+      }
     });
 
     return () => {
@@ -105,42 +120,45 @@ export function useChat(conversationId: string) {
   const sendMessage = async (content: string) => {
     if (!user?.id) return;
 
-    const targetUserId = conversationId === "new" 
-      ? draftRecipientId 
-      : conversation?.participantsIdList.find(id => id !== user.id);
+    const targetUserId =
+      conversationId === "new"
+        ? draftRecipientId
+        : conversation?.participants.find((id) => id !== user.id);
 
     if (!targetUserId) return;
 
     const tempId = Date.now().toString();
 
-    // ✅ FIX: Create a strictly typed UIMessage
     const optimisticMsg: UIMessage = {
       id: tempId,
-      content: { content: content, type: "text" }, // Match nested structure
-      createdAt: new Date().toISOString(), // Match string type
+      content: { content: content, type: "text" },
+      createdAt: new Date().toISOString(),
       isPinned: false,
       isRead: true,
       participantsIdList: [user.id, targetUserId],
-      lastMessageTime: new Date(), // If part of model
-      
+      lastMessageTime: new Date(),
+
       senderId: user.id,
-      isMine: true,       // Explicitly set true
+      isMine: true,
       conversationId: conversationId,
       reaction: [],
-      status: "sending",  // UI status
-      name: user.name || "Me", 
+      status: "sending",
+      name: user.name || "Me",
       avatar: user.avatar || "",
-    } as unknown as UIMessage; // Safe cast if optional fields match
+    } as unknown as UIMessage;
 
     setMessages((prev) => [...prev, optimisticMsg]);
-    setTimeout(() => scrollToBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 10);
+    setTimeout(
+      () => scrollToBottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+      10,
+    );
 
     try {
       if (conversationId === "new") {
-        const res = await apiPost<{ id: string }>("/conversation", { 
-          recipientId: targetUserId, 
+        const res = await apiPost<{ id: string }>("/conversation", {
+          recipientId: targetUserId,
           content,
-          type: "text"
+          type: "text",
         });
         return res?.id;
       } else {
@@ -148,12 +166,14 @@ export function useChat(conversationId: string) {
           conversationId,
           content,
           toUserId: targetUserId,
-          tempId
+          tempId,
         });
       }
     } catch (e) {
       console.error("Send failed", e);
-      setMessages(prev => prev.map(m => m.id === tempId ? {...m, status: "failed"} : m)); 
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...m, status: "failed" } : m)),
+      );
     }
   };
 
@@ -162,6 +182,6 @@ export function useChat(conversationId: string) {
     conversation,
     isLoading,
     sendMessage,
-    scrollToBottomRef
+    scrollToBottomRef,
   };
 }

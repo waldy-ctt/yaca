@@ -11,28 +11,26 @@ import { apiPost } from "@/lib/api";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import {
   validateEmail,
-  validateIdentifier,
   validatePassword,
 } from "@/lib/utils";
+import { AuthDto } from "@/types/auth";
 
 function LoginScreen() {
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [identifier, setIdentifier] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errors, setErrors] = useState<{
     identifier?: string;
     password?: string;
     api?: string;
   }>({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { t } = useTranslation();
   const { login } = useAuthStore();
 
   const handleSubmit = async () => {
-    // if (identifier.trim().length === 0 || password.trim().length === 0) return;
-    // setIsLoading(true);
-
+    if (identifier.trim().length === 0 || password.trim().length === 0) return;
     const identifierValid = validateEmail(identifier);
     const passwordValid = validatePassword(password);
 
@@ -48,7 +46,7 @@ function LoginScreen() {
     setErrors({});
     setIsLoading(true);
     try {
-      const data: any = await apiPost("/users/login", {
+      const data: AuthDto = await apiPost<AuthDto>("/users/login", {
         identifier: identifier,
         password: password,
       });
@@ -68,6 +66,7 @@ function LoginScreen() {
       );
 
       router.navigate({ to: ROUTES.HOME });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setErrors({ identifier: undefined, password: undefined, api: e.message });
     }

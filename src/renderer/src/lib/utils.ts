@@ -107,3 +107,26 @@ export function validateIdentifier(value: string): boolean {
   }
   return validatePhoneWithoutPrefix(value);
 }
+
+/**
+ * Generates a random username string of a specified length.
+ * The username consists of alphanumeric characters (A-Z, a-z, 0-9).
+ * * @param length The desired length of the username (defaults to 8).
+ * @returns A randomly generated alphanumeric username string.
+ */
+export function generateRandomUsername(length: number = 8): string {
+    // Defines the pool of characters: A-Z, a-z, and 0-9.
+    const characters: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let username: string = '';
+
+    // Loop `length` times to build the username string
+    for (let i = 0; i < length; i++) {
+        // Generate a random index within the bounds of the `characters` string
+        const randomIndex: number = Math.floor(Math.random() * characters.length);
+        
+        // Append the character at the random index to the username
+        username += characters.charAt(randomIndex);
+    }
+
+    return username;
+}

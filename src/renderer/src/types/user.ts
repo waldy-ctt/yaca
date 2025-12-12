@@ -10,3 +10,8 @@ export interface UserModel {
   avatar: string | null;
   status: presence_status | presence_status.NONE;
 }
+
+export interface UserDto {
+  data: UserModel;
+  nextCursor: string;
+}

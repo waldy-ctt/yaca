@@ -8,21 +8,24 @@ import { t } from "i18next";
 import { apiPost } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import { router } from "@/routes";
+import { AuthDto } from "@/types/auth";
+import { generateRandomUsername } from "@/lib/utils";
 
 function SignupScreen() {
   const { login } = useAuthStore();
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [email, setEmail] = useState<string>("");
+  const [name, setName] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState<boolean>(false);
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
     confirmPassword?: string;
   }>({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const validateEmail = (email: string) => {
     if (!email) return "Email is required";
@@ -80,12 +83,12 @@ function SignupScreen() {
     setErrors({});
     setIsLoading(true);
 
-    const data: any = await apiPost("/users/signup", {
+    const data: AuthDto = await apiPost<AuthDto>("/users/signup", {
       email: email,
       password: password,
       name: name,
-      username: "lthctt", // TODO: MAKE
-      tel: "+849853464",
+      username: generateRandomUsername(), // NOTE: If want, make use input, otherwise move to BE
+      tel: "",
     });
 
     login(
@@ -137,7 +140,7 @@ function SignupScreen() {
   };
 
   const handleLoginNavigation = () => {
-    console.log("Navigate to login");
+    router.navigate({ to: ROUTES.LOGIN });
   };
 
   return (
@@ -360,6 +363,7 @@ function SignupScreen() {
       </div>
     </div>
   );
+
 }
 
 export default SignupScreen;

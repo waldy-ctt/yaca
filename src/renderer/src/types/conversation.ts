@@ -2,7 +2,7 @@ import { presence_status } from "./enums";
 
 export interface ConversationModel {
   id: string;
-  participantsIdList: string[];
+  participants: string[];
   isPinned: boolean;
   unreadMessageAmount?: number;
   lastMessageTime: Date;
