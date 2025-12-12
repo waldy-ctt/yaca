@@ -29,25 +29,10 @@ const statusConfig = {
 
 function MainPageSheet({ children }: MainPageSheetProps) {
   const { language, setLanguage, theme, setTheme } = useSettingsStore();
-  const { user, updateUser } = useUserStore();
+  const { user } = useAuthStore();
   const { logout } = useAuthStore();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-
-  // TEST ONLY | TODO: REMOVE WHEN DONE
-  useEffect(() => {
-    updateUser({
-      tel: "+84859853463",
-      avatar:
-        "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/avatars/00/005d46c6180fb0bf94018d897803e63a95131c57_full.jpg",
-      username: "@waldyctt",
-      bio: "saigonese",
-      name: "Waldy",
-      status: presence_status.ONLINE,
-      email: "clocktoktok@gmail.com",
-      id: "123123",
-    });
-  }, []);
 
   const handleNavigation = (route: string) => {
     console.log(`Navigating to: ${route}`);

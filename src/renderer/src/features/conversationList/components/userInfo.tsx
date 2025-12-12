@@ -4,6 +4,7 @@ import { useState } from "react";
 import StatusChangeDialog from "./statusChangeDialog";
 import { useUserStore } from "@/stores/userStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuthStore } from "@/stores/authStore";
 
 export interface StatusConfigInterface {
   label: string;
@@ -12,7 +13,7 @@ export interface StatusConfigInterface {
 }
 
 function UserInfo(): JSX.Element {
-  const { user } = useUserStore();
+  const { user } = useAuthStore();
   const status = user?.status ?? presence_status.NONE;
   const [isStatusOpen, setIsStatusOpen] = useState<boolean>(false);
 

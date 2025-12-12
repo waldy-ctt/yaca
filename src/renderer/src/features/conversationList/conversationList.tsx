@@ -1,8 +1,13 @@
 import { Button } from "@/components/ui/button";
-import { Menu, Search } from "lucide-react";
+import { Menu, Plus, Search } from "lucide-react";
 import MainPageSheet from "./components/mainPageSheet";
 import { ConversationItem } from "./components/conversationItem";
 import { t } from "i18next";
+import { router } from "@/routes";
+import { ROUTES } from "@/types";
+import { useEffect, useState } from "react";
+import NewConversationSheet from "./newConversationSheet";
+import { apiGet } from "@/lib/api";
 
 function ConversationListScreen() {
   return (
@@ -20,114 +25,166 @@ function ConversationListScreen() {
 
 export default ConversationListScreen;
 
-function ConversationList() {
-  const pinnedConversation = [];
-  const normalConversation = [];
-
-  const mockData = [
-    {
-      name: "Nguyen Thi Minh Thu",
-      lastMessage: "Em dep qua em oi",
-      isPinned: true,
-      isRead: true,
-      latestTimestamp: new Date(),
-      opponentAvatar:
-        "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/avatars/00/004ece6770a6a308cfb99377ad0e0f9a411e0e48_full.jpg",
-    },
-    {
-      name: "Nguyen Phuc Hau",
-      lastMessage: "CLQJZ?",
-      isPinned: false,
-      isRead: false,
-      latestTimestamp: new Date("2025-11-25T12:00:00"),
-      opponentAvatar: null,
-    },
-    {
-      name: "Super Idol 105C",
-      lastMessage: `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis et efficitur magna. Curabitur in rhoncus magna. Mauris non neque erat. Sed tristique vehicula lobortis. Etiam sodales neque mi, vel malesuada tellus accumsan rutrum. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec a pellentesque magna. Duis magna dolor, molestie quis nisl id, tempor iaculis ante. Proin volutpat venenatis arcu aliquet cursus. Aliquam sed sem sed dolor porttitor viverra. Curabitur felis metus, tempor sit amet volutpat posuere, porta mollis felis. Vestibulum malesuada efficitur magna, id feugiat lorem scelerisque pharetra.
-Quisque facilisis congue nunc, ac ullamcorper quam dignissim sed. Donec consequat, turpis ut pulvinar luctus, nibh felis volutpat quam, sit amet suscipit sem odio vel eros. Etiam malesuada, lacus at finibus porta, sapien augue maximus leo, at porttitor ex eros ut sapien. Donec eleifend pulvinar nisi. Praesent condimentum orci a ligula dictum pellentesque. Proin id nisi et orci pulvinar elementum. Sed elementum tortor a porta interdum. Nam convallis nisl vel fermentum efficitur. Cras magna elit, blandit quis nibh vel, pharetra varius nibh. Suspendisse sed ante malesuada, cursus arcu ac, fringilla magna.
-Vestibulum varius nisi et diam rhoncus, sit amet pretium nisl porttitor. Pellentesque rutrum dictum est, sed molestie justo imperdiet sit amet. Nulla ornare ligula eget orci iaculis, nec venenatis risus maximus. Curabitur vitae diam magna. Curabitur rhoncus mollis diam, ac iaculis metus porta at. Sed bibendum nulla blandit diam molestie, vitae lacinia lorem vulputate. Donec blandit eros sed eleifend vehicula. Phasellus in lectus mi.
-Suspendisse potenti. Quisque ac est ut dolor pellentesque porta quis eu augue. Vestibulum eget aliquam felis. Nulla eu libero metus. Phasellus hendrerit ex a gravida venenatis. Morbi pellentesque lorem libero, in pellentesque dui eleifend at. Ut ac felis at neque dapibus luctus venenatis sed massa. Morbi vehicula vestibulum nisl sit amet feugiat. Praesent feugiat commodo interdum. Phasellus euismod augue eu urna venenatis, ut elementum diam feugiat. Duis in ultrices enim. Maecenas et elit quis arcu tincidunt mollis.
-Curabitur erat est, ultrices eu erat sollicitudin, fermentum mollis nunc. Ut ac tellus a nibh tincidunt fringilla. Ut tincidunt libero sit amet sagittis vehicula. Integer pulvinar sem ante, in feugiat eros ultrices eget. Vestibulum vestibulum felis ac risus commodo, a scelerisque sem tristique. Sed sit amet sem ac neque tempor maximus. Duis in purus ultricies, pharetra est in, faucibus neque.`,
-      isPinned: false,
-      isRead: false,
-      latestTimestamp: new Date("2025-11-23T14:02:00"),
-      opponentAvatar: null,
-    },
-  ];
-
-  mockData.map((data) => {
-    if (data.isPinned) {
-      pinnedConversation.push(data);
-    } else {
-      normalConversation.push(data);
-    }
-  });
-  return (
-    <>
-      <div>
-        {pinnedConversation.map((data) => {
-          return (
-            <>
-              <div className="">
-                <ConversationItem
-                  lastMessage={data.lastMessage}
-                  name={data.name}
-                  opponentAvatar={data.opponentAvatar}
-                  isPinned={data.isPinned}
-                  latestTimestamp={data.latestTimestamp}
-                  onClick={() => {}}
-                  isRead={data.isRead}
-                />
-              </div>
-            </>
-          );
-        })}
-        {normalConversation.map((data) => {
-          return (
-            <>
-              <div className="">
-                <ConversationItem
-                  lastMessage={data.lastMessage}
-                  name={data.name}
-                  opponentAvatar={data.opponentAvatar}
-                  isPinned={data.isPinned}
-                  latestTimestamp={data.latestTimestamp}
-                  onClick={() => {}}
-                  isRead={data.isRead}
-                />
-              </div>
-            </>
-          );
-        })}
-      </div>
-    </>
-  );
+interface Convo {
+  id: string; // Added ID so we can navigate correctly
+  lastMessage: string;
+  name: string;
+  opponentAvatar: string | null;
+  isPinned: boolean;
+  latestTimestamp: string | Date; // Allow both for flexibility
+  isRead: boolean;
 }
 
-function Header() {
-  return (
-    <div className="flex justify-between w-full px-2">
-      <MainPageSheet>
-        <Button
-          variant={"outline"}
-          size={"icon"}
-          className="hover:outline-none focus:outline-none hover:border-none focus:border-none"
-        >
-          <Menu />
-        </Button>
-      </MainPageSheet>
+function ConversationList() {
+  // 1. One source of truth for state
+  const [conversations, setConversations] = useState<Convo[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-      <p className="font-bold text-lg">{t('chats')}</p>
-      <Button
-        variant={"outline"}
-        size={"icon"}
-        className="hover:outline-none focus:outline-none hover:border-none focus:border-none"
-      >
-        <Search />
-      </Button>
+  // 2. The Fetch Logic
+  const fetchConversationList = async () => {
+    try {
+      // Assuming apiGet returns an array or { data: Array }
+      const response: any = await apiGet("/conversation");
+
+      // Safety check: Ensure we are mapping over an array
+      // If your API returns { data: [...] }, change this to response.data
+      const rawData = Array.isArray(response) ? response : response.data || [];
+
+      const formattedData: Convo[] = rawData.map((item: any) => ({
+        id: item.id, // Ensure your backend sends this!
+        name: item.name,
+        lastMessage: item.lastMessage || "Started a conversation",
+        latestTimestamp: item.lastMessageTimestamp || new Date(),
+        opponentAvatar: item.avatar,
+        isPinned: item.isPinned || false,
+        isRead: item.isRead || false,
+      }));
+
+      // 3. Set state ONCE with the new array
+      setConversations(formattedData);
+    } catch (error) {
+      console.error("Failed to load chats", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 4. The Effect
+  // dependency array [] means "Run only once when component mounts"
+  useEffect(() => {
+    fetchConversationList();
+  }, []);
+
+  // Optional: Filter logic if you want to separate Pinned/Normal visually
+  const pinned = conversations.filter((c) => c.isPinned);
+  const normal = conversations.filter((c) => !c.isPinned);
+
+  if (isLoading) {
+    return (
+      <div className="p-4 text-center text-muted-foreground">
+        Loading chats...
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col">
+      {/* Pinned Section */}
+      {pinned.length > 0 && (
+        <>
+          <div className="px-4 py-2 text-xs font-semibold text-muted-foreground">
+            PINNED
+          </div>
+          {pinned.map((data) => (
+            <ConversationItem
+              key={data.id} // distinct key is required
+              lastMessage={data.lastMessage}
+              name={data.name}
+              opponentAvatar={data.opponentAvatar || ""}
+              isPinned={data.isPinned}
+              latestTimestamp={data.latestTimestamp}
+              isRead={data.isRead}
+              onClick={() => {
+                router.navigate({
+                  to: ROUTES.CONVERSATION + "/$conversationId",
+                  params: { conversationId: data.id },
+                });
+              }}
+            />
+          ))}
+        </>
+      )}
+
+      {/* Normal Section */}
+      {normal.map((data) => (
+        <ConversationItem
+          key={data.id}
+          lastMessage={data.lastMessage}
+          name={data.name}
+          opponentAvatar={data.opponentAvatar || ""}
+          isPinned={data.isPinned}
+          latestTimestamp={data.latestTimestamp}
+          isRead={data.isRead}
+          onClick={() => {
+            router.navigate({
+              to: ROUTES.CONVERSATION + "/$conversationId",
+              params: { conversationId: data.id },
+            });
+          }}
+        />
+      ))}
+
+      {conversations.length === 0 && (
+        <div className="p-8 text-center text-muted-foreground">
+          No conversations yet
+        </div>
+      )}
     </div>
   );
 }
 
+function Header() {
+  const [isNewConversationOpen, setIsNewConversationOpen] = useState(false);
 
+  return (
+    <>
+      <div className="flex justify-between items-center w-full px-2 gap-2">
+        <MainPageSheet>
+          <Button
+            variant={"outline"}
+            size={"icon"}
+            className="hover:outline-none focus:outline-none hover:border-none focus:border-none"
+          >
+            <Menu />
+          </Button>
+        </MainPageSheet>
+
+        <p className="font-bold text-lg flex-1 text-center">{t("chats")}</p>
+
+        <div className="flex gap-2">
+          <Button
+            variant={"outline"}
+            size={"icon"}
+            className="hover:outline-none focus:outline-none hover:border-none focus:border-none"
+            onClick={() => setIsNewConversationOpen(true)}
+          >
+            <Plus />
+          </Button>
+          <Button
+            variant={"outline"}
+            size={"icon"}
+            className="hover:outline-none focus:outline-none hover:border-none focus:border-none"
+          >
+            <Search />
+          </Button>
+        </div>
+      </div>
+
+      {/* New Conversation Sheet */}
+      <NewConversationSheet
+        isOpen={isNewConversationOpen}
+        onClose={() => setIsNewConversationOpen(false)}
+      />
+    </>
+  );
+}

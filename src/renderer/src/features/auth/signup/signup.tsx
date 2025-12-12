@@ -3,12 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
-import { EMAIL_REGEX } from "@/types";
+import { EMAIL_REGEX, presence_status, ROUTES } from "@/types";
 import { t } from "i18next";
 import { apiPost } from "@/lib/api";
+import { useAuthStore } from "@/stores/authStore";
+import { router } from "@/routes";
 
 function SignupScreen() {
+  const { login } = useAuthStore();
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -59,14 +63,7 @@ function SignupScreen() {
 
   const passwordStrength = getPasswordStrength(password);
 
-  const handleSubmit = () => {
-    apiPost('/users/signup', {
-      email: 'clocktoktok@gmail.com',
-      password: 'Sieunhan1234!',
-      name: "waldy",
-      username: 'waldyctt',
-      tel: '+84859853463'
-    })
+  const handleSubmit = async () => {
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
     const confirmPasswordError = validateConfirmPassword(confirmPassword);
@@ -83,6 +80,29 @@ function SignupScreen() {
     setErrors({});
     setIsLoading(true);
 
+    const data: any = await apiPost("/users/signup", {
+      email: email,
+      password: password,
+      name: name,
+      username: "lthctt", // TODO: MAKE
+      tel: "+849853464",
+    });
+
+    login(
+      {
+        avatar: data.user?.avatar ?? null,
+        bio: data.user?.bio ?? "",
+        email: data.user?.email ?? "",
+        id: data.user?.id ?? "",
+        name: data.user?.name ?? "",
+        status: data.user?.status ?? presence_status.ONLINE,
+        tel: data.user?.tel ?? "",
+        username: data.user?.username ?? "",
+      },
+      data.token,
+    );
+
+    router.navigate({ to: ROUTES.HOME });
   };
 
   const handleEmailChange = (value: string) => {
@@ -90,6 +110,10 @@ function SignupScreen() {
     if (errors.email) {
       setErrors({ ...errors, email: undefined });
     }
+  };
+
+  const handleNameChange = (value: string) => {
+    setName(value);
   };
 
   const handlePasswordChange = (value: string) => {
@@ -142,6 +166,21 @@ function SignupScreen() {
           </div>
 
           <div className="space-y-4">
+            {/* Name Field */}
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="your name"
+                value={name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                onKeyDown={handleKeyPress}
+                className={""}
+                disabled={isLoading}
+              />
+            </div>
+
             {/* Email Field */}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

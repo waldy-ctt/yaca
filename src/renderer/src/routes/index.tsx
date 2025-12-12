@@ -1,85 +1,108 @@
 // src/renderer/src/routes/index.tsx  ← FINAL VERSION
-import { createRouter, createRootRoute, createRoute } from '@tanstack/react-router'
-import { LoginRoute } from './components/LoginRoute'
-import { ConversationListRoute } from './components/ConversationListRoute'
-import { SignUpRoute } from './components/SignUpRoute'
-import { RootLayout } from './components/base/RootLayout'
-import { useAuthStore } from '@/stores/authStore'
-import { useNavigate } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import {
+  createRouter,
+  createRootRoute,
+  createRoute,
+} from "@tanstack/react-router";
+import { LoginRoute } from "./components/LoginRoute";
+import { ConversationListRoute } from "./components/ConversationListRoute";
+import { SignUpRoute } from "./components/SignUpRoute";
+import { RootLayout } from "./components/base/RootLayout";
+import { useAuthStore } from "@/stores/authStore";
+import { useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import ConversationScreen from "@/features/conversationList/conversation/conversation";
 
 // AUTH GUARD — PROTECTED ROUTES
 function Protected({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore()
-  const navigate = useNavigate()
+  const { isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate({ to: '/login' })
+      navigate({ to: "/login" });
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, navigate]);
 
-  if (!isAuthenticated) return null
-  return <>{children}</>
+  if (!isAuthenticated) return null;
+  return <>{children}</>;
 }
 
 // PUBLIC ONLY — redirect if logged in
 function PublicOnly({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore()
-  const navigate = useNavigate()
+  const { isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate({ to: '/' })
+      navigate({ to: "/" });
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, navigate]);
 
-  if (isAuthenticated) return null
-  return <>{children}</>
+  if (isAuthenticated) return null;
+  return <>{children}</>;
 }
 
 const rootRoute = createRootRoute({
   component: RootLayout,
-})
+});
 
 // PUBLIC ROUTES
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/login',
+  path: "/login",
   component: () => (
     <PublicOnly>
       <LoginRoute />
     </PublicOnly>
   ),
-})
+});
 
 const signupRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/signup',
+  path: "/signup",
   component: () => (
     <PublicOnly>
       <SignUpRoute />
     </PublicOnly>
   ),
-})
+});
 
 // PROTECTED ROUTES
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/',
+  path: "/",
   component: () => (
     <Protected>
       <ConversationListRoute />
     </Protected>
   ),
-})
+});
 
-const routeTree = rootRoute.addChildren([loginRoute, signupRoute, homeRoute])
+const conversationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/conversation/$conversationId",
+  component: () => {
+    const { conversationId } = conversationRoute.useParams();
+    return (
+      <Protected>
+        <ConversationScreen id={conversationId} />
+      </Protected>
+    );
+  },
+});
 
-export const router = createRouter({ routeTree })
+const routeTree = rootRoute.addChildren([
+  loginRoute,
+  signupRoute,
+  homeRoute,
+  conversationRoute,
+]);
 
-declare module '@tanstack/react-router' {
+export const router = createRouter({ routeTree });
+
+declare module "@tanstack/react-router" {
   interface Register {
-    router: typeof router
+    router: typeof router;
   }
 }
