@@ -11,7 +11,7 @@ import { RootLayout } from "./components/base/RootLayout";
 import { useAuthStore } from "@/stores/authStore";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import ConversationScreen from "@/features/conversationList/conversation/conversation";
+import ConversationScreen from "@/features/conversation/ConversationScreen";
 
 // AUTH GUARD — PROTECTED ROUTES
 function Protected({ children }: { children: React.ReactNode }) {
@@ -86,7 +86,7 @@ const conversationRoute = createRoute({
     const { conversationId } = conversationRoute.useParams();
     return (
       <Protected>
-        <ConversationScreen id={conversationId} />
+        <ConversationScreen />
       </Protected>
     );
   },
