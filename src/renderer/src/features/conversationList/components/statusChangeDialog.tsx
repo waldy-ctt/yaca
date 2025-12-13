@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/dialog";
 import { presence_status } from "@/types";
 import { StatusConfigInterface } from "./userInfo";
-import { useUserStore } from "@/stores/userStore";
+import { useAuthStore } from "@/stores/authStore";
 
 interface StatusChangeDialogProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ function StatusChangeDialog({
   statusConfig,
   status,
 }: StatusChangeDialogProps): JSX.Element {
-  const { updateUser, user } = useUserStore();
+  const { updateUser, user } = useAuthStore();
 
   const handleStatusChange = (newStatus: string) => {
     updateUser({

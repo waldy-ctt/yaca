@@ -2,7 +2,6 @@ import { getInitials } from "@/lib/utils";
 import { presence_status } from "@/types";
 import { useState } from "react";
 import StatusChangeDialog from "./statusChangeDialog";
-import { useUserStore } from "@/stores/userStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuthStore } from "@/stores/authStore";
 
