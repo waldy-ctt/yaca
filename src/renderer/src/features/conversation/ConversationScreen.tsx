@@ -16,14 +16,23 @@ function ConversationScreen() {
   const searchParams = useSearch({ strict: false }) as { recipientId?: string };
   const { markAsRead } = useConversationList();
   
-  // ✅ Use ref instead of state to store the callback
   const addOptimisticMessageRef = useRef<((msg: UIMessage) => void) | null>(null);
 
+  // ✅ Mark as read whenever conversation changes
   useEffect(() => {
-    if (!conversationId || conversationId === "new") return;
+    if (!conversationId || conversationId === "new") {
+      console.log("⏭️ Skipping read: draft or no conversation");
+      return;
+    }
 
+    console.log(`📖 [ConversationScreen] Marking ${conversationId} as read`);
+    console.log(`📖 [ConversationScreen] Calling markAsRead...`);
     markAsRead(conversationId);
+    
+    console.log(`📖 [ConversationScreen] Sending READ via WebSocket...`);
     ws.send("READ", { conversationId });
+    
+    console.log(`✅ [ConversationScreen] Read actions completed for ${conversationId}`);
   }, [conversationId, markAsRead]);
 
   const isDraft = conversationId === "new";

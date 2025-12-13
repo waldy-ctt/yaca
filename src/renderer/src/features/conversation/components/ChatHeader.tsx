@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { router } from "@/routes";
 import { getInitials } from "@/lib/utils";
 import { apiGet, ws } from "@/lib/api";
-import { presence_status, UserModel } from "@/types";
+import { presence_status, UserModel, ROUTES } from "@/types";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import { ConversationInfoSheet } from "./ConversationInfoSheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatHeaderProps {
   conversationId: string;
@@ -27,10 +28,11 @@ interface ConversationHeaderInfo {
 
 export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
   const { user } = useAuthStore();
+  const isMobile = useIsMobile();
   const [info, setInfo] = useState<ConversationHeaderInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTyping, setIsTyping] = useState<boolean>(false);
-  const [showInfoSheet, setShowInfoSheet] = useState(false); // ✅ NEW
+  const [showInfoSheet, setShowInfoSheet] = useState(false);
 
   const isDraft = conversationId === "new";
   const is1on1 = info?.participantCount === 2;
@@ -149,6 +151,17 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
 
   console.log("🎨 Rendering header with:", { name, status, is1on1, opponentId: info?.opponentId });
 
+  // ✅ Handle back button click
+  const handleBack = () => {
+    if (isMobile) {
+      // Mobile: Navigate back in history
+      router.history.back();
+    } else {
+      // Desktop: Clear conversation selection (go to home route)
+      router.navigate({ to: ROUTES.HOME });
+    }
+  };
+
   return (
     <>
       <header className="h-16 border-b flex items-center px-4 justify-between bg-card/80 backdrop-blur-sm sticky top-0 z-10 shrink-0">
@@ -156,7 +169,7 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.history.back()}
+            onClick={handleBack}
             className="shrink-0 -ml-2"
           >
             <ArrowLeft className="w-5 h-5 text-muted-foreground" />

@@ -10,7 +10,6 @@ import { ConversationListRoute } from "./components/ConversationListRoute";
 import { SignUpRoute } from "./components/SignUpRoute";
 import { RootLayout } from "./components/base/RootLayout";
 import { useAuthStore } from "@/stores/authStore";
-import ConversationScreen from "@/features/conversation/ConversationScreen";
 import { ROUTES } from "@/types";
 
 const authGuard = () => {
@@ -40,7 +39,7 @@ const signupRoute = createRoute({
   component: SignUpRoute,
 });
 
-// Protected routes 
+// ✅ FIXED: Home route that handles both list and conversation
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -48,10 +47,11 @@ const homeRoute = createRoute({
   beforeLoad: authGuard,
 });
 
+// ✅ FIXED: Conversation route as child of home (same component)
 const conversationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/conversation/$conversationId",
-  component: () => <ConversationScreen />,
+  component: ConversationListRoute, // ✅ Same component handles both!
   beforeLoad: authGuard,
 });
 
