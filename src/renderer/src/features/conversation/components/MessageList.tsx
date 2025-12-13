@@ -6,6 +6,7 @@ import { UIMessage, MessageModel, MessageDto } from "@/types";
 import { ws } from "@/lib/api";
 import { apiGet } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
+import { MessageDetailSheet } from "./MessageDetailSheet";
 
 interface MessageListProps {
   conversationId: string;
@@ -18,6 +19,8 @@ export function MessageList({
 }: MessageListProps) {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedMessage, setSelectedMessage] = useState<UIMessage | null>(null);
+  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
   const { user } = useAuthStore();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -27,7 +30,6 @@ export function MessageList({
     status: "sent" as const,
   });
 
-  // ✅ Function to add optimistic message
   const addOptimisticMessage = useCallback((msg: UIMessage) => {
     setMessages((prev) => [...prev, msg]);
     setTimeout(
@@ -36,7 +38,6 @@ export function MessageList({
     );
   }, []);
 
-  // ✅ Expose the handler to parent IMMEDIATELY
   useEffect(() => {
     if (onOptimisticMessageHandler) {
       onOptimisticMessageHandler(addOptimisticMessage);
@@ -67,7 +68,7 @@ export function MessageList({
     fetchMessages();
   }, [conversationId]);
 
-  // ✅ WebSocket: ACK handler (for sender's optimistic UI)
+  // WebSocket: ACK handler
   useEffect(() => {
     const unsubscribe = ws.subscribe("ACK", ({ tempId, message }) => {
       setMessages((prev) =>
@@ -82,23 +83,20 @@ export function MessageList({
     return unsubscribe;
   }, [user?.id]);
 
-  // ✅ WebSocket: NEW_MESSAGE from others (FIXED - removed sender filter)
+  // WebSocket: NEW_MESSAGE
   useEffect(() => {
     if (conversationId === "new") return;
 
     const unsubscribe = ws.subscribe("NEW_MESSAGE", (payload) => {
       const msg = payload.message;
 
-      // Only filter by conversationId, NOT by sender
       if (msg.conversationId !== conversationId) return;
 
       setMessages((prev) => {
-        // Prevent duplicates
         if (prev.some((m) => m.id === msg.id)) return prev;
         
         const enrichedMsg = enrichMessage(msg);
         
-        // Auto-scroll for new messages
         setTimeout(
           () => scrollRef.current?.scrollIntoView({ behavior: "smooth" }),
           10,
@@ -111,7 +109,7 @@ export function MessageList({
     return unsubscribe;
   }, [conversationId, user?.id]);
 
-  // ✅ WebSocket: READ event
+  // WebSocket: READ event
   useEffect(() => {
     if (conversationId === "new") return;
 
@@ -128,10 +126,51 @@ export function MessageList({
     return unsubscribe;
   }, [conversationId, user?.id]);
 
+  // ✅ NEW: WebSocket - MESSAGE_UPDATED (reactions)
+  useEffect(() => {
+    if (conversationId === "new") return;
+
+    const unsubscribe = ws.subscribe("MESSAGE_UPDATED", (payload) => {
+      const updatedMsg = payload.message;
+      
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === updatedMsg.id ? enrichMessage(updatedMsg) : m
+        )
+      );
+    });
+
+    return unsubscribe;
+  }, [conversationId, user?.id]);
+
+  // ✅ NEW: WebSocket - MESSAGE_DELETED
+  useEffect(() => {
+    if (conversationId === "new") return;
+
+    const unsubscribe = ws.subscribe("MESSAGE_DELETED", (payload) => {
+      setMessages((prev) => prev.filter((m) => m.id !== payload.messageId));
+    });
+
+    return unsubscribe;
+  }, [conversationId]);
+
   // Auto-scroll on new messages
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // ✅ NEW: Handle message click
+  const handleMessageClick = (message: UIMessage) => {
+    setSelectedMessage(message);
+    setIsDetailSheetOpen(true);
+  };
+
+  // ✅ NEW: Handle message deletion
+  const handleMessageDelete = () => {
+    if (selectedMessage) {
+      setMessages((prev) => prev.filter((m) => m.id !== selectedMessage.id));
+    }
+  };
 
   if (isLoading) {
     return (
@@ -151,11 +190,24 @@ export function MessageList({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 dark:bg-background/50">
-      {messages.map((msg) => (
-        <MessageItem key={msg.id} message={msg} />
-      ))}
-      <div ref={scrollRef} className="h-px" />
-    </div>
+    <>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 dark:bg-background/50">
+        {messages.map((msg) => (
+          <MessageItem 
+            key={msg.id} 
+            message={msg} 
+            onClick={() => handleMessageClick(msg)}
+          />
+        ))}
+        <div ref={scrollRef} className="h-px" />
+      </div>
+
+      <MessageDetailSheet
+        isOpen={isDetailSheetOpen}
+        onClose={() => setIsDetailSheetOpen(false)}
+        message={selectedMessage}
+        onDelete={handleMessageDelete}
+      />
+    </>
   );
 }

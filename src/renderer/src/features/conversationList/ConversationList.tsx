@@ -37,7 +37,7 @@ export default function ConversationList() {
               opponentAvatar={conv.avatar}
               unreadCount={unreadCounts[conv.id] || 0}
               participantCount={conv.participants?.length || 2}
-              opponentStatus={(conv as any).status}
+              opponentStatus={conv.status} // ✅ This should now work correctly
               onClick={() =>
                 router.navigate({
                   to: "/conversation/$conversationId",

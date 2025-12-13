@@ -28,18 +28,33 @@ export function ChatInput({
   const [isSending, setIsSending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const typingTimer = useRef<NodeJS.Timeout | null>(null);
+  const isTypingRef = useRef(false); // Track if we're currently "typing"
   const { user } = useAuthStore();
 
-  const TYPING_DELAY = 1000;
+  const TYPING_DELAY = 2000; // Stop typing after 2s of no input
   const isDraft = conversationId === "new";
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  const sendTyping = (isTyping: boolean) => {
-    if (!isDraft && isTyping) {
+  // ✅ Send typing indicator
+  const sendTyping = () => {
+    if (isDraft) return; // Don't send typing for drafts
+    
+    // Only send if we're not already in "typing" state
+    if (!isTypingRef.current) {
+      console.log("⌨️ Sending TYPING event for conversation:", conversationId);
       ws.send("TYPING", { conversationId });
+      isTypingRef.current = true;
+    }
+  };
+
+  // ✅ Stop typing indicator
+  const stopTyping = () => {
+    if (isTypingRef.current) {
+      console.log("🛑 Stopping typing indicator");
+      isTypingRef.current = false;
     }
   };
 
@@ -48,12 +63,15 @@ export function ChatInput({
     if (!trimmed || disabled || isSending) return;
     if (!user?.id) return;
 
+    // Clear typing state before sending
+    stopTyping();
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+
     const tempId = crypto.randomUUID();
     setIsSending(true);
 
     try {
       if (isDraft) {
-        // DRAFT MODE: Create conversation via HTTP
         if (!recipientId) {
           console.error("Cannot send: recipientId missing for draft");
           return;
@@ -76,9 +94,7 @@ export function ChatInput({
           });
         }
       } else {
-        // REAL CONVERSATION: Optimistic update + WebSocket
-
-        // 1. Create optimistic message
+        // Create optimistic message
         const optimisticMsg: UIMessage = {
           id: tempId,
           content: { content: trimmed, type: "text" },
@@ -90,18 +106,19 @@ export function ChatInput({
           status: "sending",
         };
 
-        // 2. Add to UI immediately
+        // Add to UI immediately
         if (onOptimisticMessage) {
           onOptimisticMessage(optimisticMsg);
         }
 
-        // 3. Clear input
+        // Clear input
         setMessage("");
 
-        // 4. Send via WebSocket - ✅ FIXED PAYLOAD
+        // Send via WebSocket
+        console.log("📤 Sending message via WebSocket");
         ws.send("SEND_MESSAGE", {
           content: {
-            data: trimmed, // ✅ Correct structure
+            data: trimmed,
             type: "text",
           },
           destinationId: conversationId,
@@ -123,13 +140,22 @@ export function ChatInput({
 
     if (isDraft) return;
 
-    if (typingTimer.current) clearTimeout(typingTimer.current);
+    // Clear existing timer
+    if (typingTimer.current) {
+      clearTimeout(typingTimer.current);
+    }
 
     if (value.trim()) {
-      sendTyping(true);
-      typingTimer.current = setTimeout(() => sendTyping(false), TYPING_DELAY);
+      // Send typing indicator
+      sendTyping();
+      
+      // Set timer to stop typing after delay
+      typingTimer.current = setTimeout(() => {
+        stopTyping();
+      }, TYPING_DELAY);
     } else {
-      sendTyping(false);
+      // Empty input = stop typing immediately
+      stopTyping();
     }
   };
 
@@ -140,9 +166,11 @@ export function ChatInput({
     }
   };
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (typingTimer.current) clearTimeout(typingTimer.current);
+      stopTyping();
     };
   }, []);
 

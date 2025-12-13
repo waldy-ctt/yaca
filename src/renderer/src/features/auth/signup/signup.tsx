@@ -1,15 +1,15 @@
+// src/features/auth/signup/signup.tsx
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
-import { EMAIL_REGEX, presence_status, ROUTES } from "@/types";
+import { presence_status, ROUTES } from "@/types";
 import { t } from "i18next";
 import { apiPost } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import { router } from "@/routes";
 import { AuthDto } from "@/types/auth";
-import { generateRandomUsername } from "@/lib/utils";
 
 function SignupScreen() {
   const { login } = useAuthStore();
@@ -18,24 +18,31 @@ function SignupScreen() {
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [showConfirmPassword, setShowConfirmPassword] =
-    useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [errors, setErrors] = useState<{
     email?: string;
+    name?: string;
     password?: string;
     confirmPassword?: string;
+    api?: string;
   }>({});
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const validateEmail = (email: string) => {
     if (!email) return "Email is required";
-    if (!EMAIL_REGEX.test(email)) return "Please enter a valid email";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Please enter a valid email";
+    return undefined;
+  };
+
+  const validateName = (name: string) => {
+    if (!name?.trim()) return "Name is required";
+    if (name.length < 2) return "Name must be at least 2 characters";
     return undefined;
   };
 
   const validatePassword = (password: string) => {
     if (!password) return "Password is required";
-    if (password.length < 8) return "Password must be at least 8 characters";
+    if (password.length < 6) return "Password must be at least 6 characters";
     return undefined;
   };
 
@@ -49,18 +56,15 @@ function SignupScreen() {
     if (!password) return { strength: 0, label: "", color: "" };
 
     let strength = 0;
-    if (password.length >= 8) strength++;
+    if (password.length >= 6) strength++;
     if (password.length >= 12) strength++;
     if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
     if (/\d/.test(password)) strength++;
     if (/[^a-zA-Z0-9]/.test(password)) strength++;
 
-    if (strength <= 2)
-      return { strength, label: "Weak", color: "text-destructive" };
-    if (strength <= 3)
-      return { strength, label: "Fair", color: "text-yellow-500" };
-    if (strength <= 4)
-      return { strength, label: "Good", color: "text-blue-500" };
+    if (strength <= 2) return { strength, label: "Weak", color: "text-destructive" };
+    if (strength <= 3) return { strength, label: "Fair", color: "text-yellow-500" };
+    if (strength <= 4) return { strength, label: "Good", color: "text-blue-500" };
     return { strength, label: "Strong", color: "text-green-500" };
   };
 
@@ -68,12 +72,14 @@ function SignupScreen() {
 
   const handleSubmit = async () => {
     const emailError = validateEmail(email);
+    const nameError = validateName(name);
     const passwordError = validatePassword(password);
     const confirmPasswordError = validateConfirmPassword(confirmPassword);
 
-    if (emailError || passwordError || confirmPasswordError) {
+    if (emailError || nameError || passwordError || confirmPasswordError) {
       setErrors({
         email: emailError,
+        name: nameError,
         password: passwordError,
         confirmPassword: confirmPasswordError,
       });
@@ -83,29 +89,34 @@ function SignupScreen() {
     setErrors({});
     setIsLoading(true);
 
-    const data: AuthDto = await apiPost<AuthDto>("/users/signup", {
-      email: email,
-      password: password,
-      name: name,
-      username: generateRandomUsername(), // NOTE: If want, make use input, otherwise move to BE
-      tel: "11",
-    });
+    try {
+      // ✅ Only send email, password, and name (username & tel auto-generated)
+      const data: AuthDto = await apiPost<AuthDto>("/users/signup", {
+        email,
+        password,
+        name,
+      });
 
-    login(
-      {
-        avatar: data.user?.avatar ?? null,
-        bio: data.user?.bio ?? "",
-        email: data.user?.email ?? "",
-        id: data.user?.id ?? "",
-        name: data.user?.name ?? "",
-        status: data.user?.status ?? presence_status.ONLINE,
-        tel: data.user?.tel ?? "",
-        username: data.user?.username ?? "",
-      },
-      data.token,
-    );
+      login(
+        {
+          avatar: data.user?.avatar ?? null,
+          bio: data.user?.bio ?? "",
+          email: data.user?.email ?? "",
+          id: data.user?.id ?? "",
+          name: data.user?.name ?? "",
+          status: data.user?.status ?? presence_status.ONLINE,
+          tel: data.user?.tel ?? "",
+          username: data.user?.username ?? "",
+        },
+        data.token,
+      );
 
-    router.navigate({ to: ROUTES.HOME });
+      router.navigate({ to: ROUTES.HOME });
+    } catch (error: any) {
+      setErrors({ api: error.message || "Signup failed" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEmailChange = (value: string) => {
@@ -117,6 +128,9 @@ function SignupScreen() {
 
   const handleNameChange = (value: string) => {
     setName(value);
+    if (errors.name) {
+      setErrors({ ...errors, name: undefined });
+    }
   };
 
   const handlePasswordChange = (value: string) => {
@@ -146,7 +160,6 @@ function SignupScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-8">
-        {/* Logo and Brand */}
         <div className="flex flex-col items-center space-y-4">
           <div className="size-24 bg-primary/10 rounded-2xl flex items-center justify-center border-2 border-primary/20">
             <div className="text-4xl font-bold text-primary">Y</div>
@@ -159,7 +172,6 @@ function SignupScreen() {
           </div>
         </div>
 
-        {/* Signup Form */}
         <div className="bg-card rounded-xl border p-6 space-y-6">
           <div className="space-y-2 text-center">
             <h2 className="text-2xl font-semibold">Create Account</h2>
@@ -169,22 +181,26 @@ function SignupScreen() {
           </div>
 
           <div className="space-y-4">
-            {/* Name Field */}
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
                 type="text"
-                placeholder="your name"
+                placeholder="Your full name"
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 onKeyDown={handleKeyPress}
-                className={""}
+                className={errors.name ? "border-destructive" : ""}
                 disabled={isLoading}
               />
+              {errors.name && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <AlertCircle className="size-3" />
+                  {errors.name}
+                </p>
+              )}
             </div>
 
-            {/* Email Field */}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -205,7 +221,6 @@ function SignupScreen() {
               )}
             </div>
 
-            {/* Password Field */}
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
@@ -216,9 +231,7 @@ function SignupScreen() {
                   value={password}
                   onChange={(e) => handlePasswordChange(e.target.value)}
                   onKeyDown={handleKeyPress}
-                  className={
-                    errors.password ? "border-destructive pr-10" : "pr-10"
-                  }
+                  className={errors.password ? "border-destructive pr-10" : "pr-10"}
                   disabled={isLoading}
                 />
                 <button
@@ -227,15 +240,10 @@ function SignupScreen() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
                   tabIndex={-1}
                 >
-                  {showPassword ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
 
-              {/* Password Strength Indicator */}
               {password && !errors.password && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -250,19 +258,15 @@ function SignupScreen() {
                                 ? "bg-blue-500"
                                 : "bg-green-500"
                         }`}
-                        style={{
-                          width: `${(passwordStrength.strength / 5) * 100}%`,
-                        }}
+                        style={{ width: `${(passwordStrength.strength / 5) * 100}%` }}
                       />
                     </div>
-                    <span
-                      className={`text-xs font-medium ${passwordStrength.color}`}
-                    >
+                    <span className={`text-xs font-medium ${passwordStrength.color}`}>
                       {passwordStrength.label}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Use 8+ characters with mix of letters, numbers & symbols
+                    Use 6+ characters with mix of letters, numbers & symbols
                   </p>
                 </div>
               )}
@@ -275,7 +279,6 @@ function SignupScreen() {
               )}
             </div>
 
-            {/* Confirm Password Field */}
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
               <div className="relative">
@@ -286,11 +289,7 @@ function SignupScreen() {
                   value={confirmPassword}
                   onChange={(e) => handleConfirmPasswordChange(e.target.value)}
                   onKeyDown={handleKeyPress}
-                  className={
-                    errors.confirmPassword
-                      ? "border-destructive pr-10"
-                      : "pr-10"
-                  }
+                  className={errors.confirmPassword ? "border-destructive pr-10" : "pr-10"}
                   disabled={isLoading}
                 />
                 <button
@@ -299,21 +298,15 @@ function SignupScreen() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
                   tabIndex={-1}
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
+                  {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
-              {confirmPassword &&
-                !errors.confirmPassword &&
-                confirmPassword === password && (
-                  <p className="text-sm text-green-500 flex items-center gap-1">
-                    <CheckCircle2 className="size-3" />
-                    Passwords match
-                  </p>
-                )}
+              {confirmPassword && !errors.confirmPassword && confirmPassword === password && (
+                <p className="text-sm text-green-500 flex items-center gap-1">
+                  <CheckCircle2 className="size-3" />
+                  Passwords match
+                </p>
+              )}
               {errors.confirmPassword && (
                 <p className="text-sm text-destructive flex items-center gap-1">
                   <AlertCircle className="size-3" />
@@ -322,17 +315,17 @@ function SignupScreen() {
               )}
             </div>
 
-            {/* Submit Button */}
-            <Button
-              onClick={handleSubmit}
-              className="w-full h-11"
-              disabled={isLoading}
-            >
+            {errors.api && (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                {errors.api}
+              </div>
+            )}
+
+            <Button onClick={handleSubmit} className="w-full h-11" disabled={isLoading}>
               {isLoading ? "Creating Account..." : "Create Account"}
             </Button>
           </div>
 
-          {/* Login Link */}
           <div className="text-center space-y-4">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -356,14 +349,12 @@ function SignupScreen() {
           </div>
         </div>
 
-        {/* Footer */}
         <p className="text-center text-xs text-muted-foreground">
           {t("create_account_accept_policy")}
         </p>
       </div>
     </div>
   );
-
 }
 
 export default SignupScreen;

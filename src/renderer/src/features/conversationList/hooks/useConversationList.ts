@@ -11,22 +11,20 @@ export function useConversationList() {
   const { user } = useAuthStore();
   const [conversations, setConversations] = useState<ConversationModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // ← NEW: Track unread count per conversation
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   // Map raw DTO → UI model
   const mapToModel = (dto: ConversationDto): ConversationModel => ({
     id: dto.id,
     isPinned: false,
-    isRead: false, // legacy — we'll ignore this now
+    isRead: false,
     lastMessage: dto.lastMessage,
     lastMessageTime: dto.lastMessageTimestamp,
     participants: dto.participants,
     avatar: dto.avatar,
     name: dto.name,
-    status: presence_status.NONE,
-    unreadMessageAmount: 0, // we'll override via unreadCounts
+    status: dto.status || presence_status.OFFLINE, // ✅ Preserve status from backend
+    unreadMessageAmount: 0,
   });
 
   // Initial fetch
@@ -40,7 +38,6 @@ export function useConversationList() {
           `/conversations/user/${user.id}`,
         );
         setConversations(data.map(mapToModel));
-        // Reset unread on fresh load (simple & safe)
         setUnreadCounts({});
       } catch (e) {
         console.error("Failed to load conversations", e);
@@ -52,19 +49,39 @@ export function useConversationList() {
     fetchList();
   }, [user?.id]);
 
+  // ✅ NEW: Listen for status changes
+  useEffect(() => {
+    const unsubscribe = ws.subscribe("STATUS_CHANGE", (payload) => {
+      const { userId, status } = payload;
+      
+      console.log(`📡 ConversationList received STATUS_CHANGE: User ${userId} is now ${status}`);
+      
+      setConversations((prev) =>
+        prev.map((conv) => {
+          // Only update if this is a 1-on-1 conversation with the user who changed status
+          if (conv.participants.length === 2 && conv.participants.includes(userId)) {
+            console.log(`✅ Updating conversation ${conv.id} status to ${status}`);
+            return { ...conv, status: status as presence_status };
+          }
+          return conv;
+        })
+      );
+    });
+
+    return unsubscribe;
+  }, []);
+
   // Real-time: last message + unread count
   useEffect(() => {
     const unsubscribe = ws.subscribe("NEW_MESSAGE", (payload) => {
       const { message }: { message: MessageModel } = payload;
 
-      // Ignore own messages
       if (!user || message.senderId === user.id) return;
 
       setConversations((prev) => {
         const existing = prev.find((c) => c.id === message.conversationId);
 
         if (existing) {
-          // Update existing conversation
           return prev.map((c) =>
             c.id === message.conversationId
               ? {
@@ -76,14 +93,13 @@ export function useConversationList() {
           );
         }
 
-        // New conversation appeared → refetch full list
         const refetch = async () => {
           try {
             const data = await apiGet<ConversationDto[]>(
               `/conversations/user/${user.id}`,
             );
             setConversations(data.map(mapToModel));
-            setUnreadCounts({}); // reset on full refresh
+            setUnreadCounts({});
           } catch {
             // Ignore
           }
@@ -92,7 +108,6 @@ export function useConversationList() {
         return prev;
       });
 
-      // ← NEW: Increment unread count for this conversation
       setUnreadCounts((prev) => ({
         ...prev,
         [message.conversationId]: (prev[message.conversationId] || 0) + 1,
@@ -104,18 +119,14 @@ export function useConversationList() {
     };
   }, [user?.id]);
 
-  // ← NEW: Function to mark a conversation as read
   const markAsRead = (conversationId: string) => {
-    // setUnreadCounts((prev) => ({
-    //   ...prev,
-    //   [conversationId]: 0,
-    // }));
+    // Reset unread count when conversation is opened
   };
 
   return {
     isLoading,
     conversations,
-    unreadCounts, // ← expose for ConversationItem
-    markAsRead, // ← call from ConversationScreen
+    unreadCounts,
+    markAsRead,
   };
 }

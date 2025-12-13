@@ -1,3 +1,4 @@
+// src/renderer/src/features/conversationList/components/mainPageSheet.tsx
 import { useState } from "react";
 import {
   Sheet,
@@ -7,35 +8,30 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { User, Settings, Info, LogOut, Languages, SunMoon } from "lucide-react";
+import { User, LogOut, Languages, SunMoon } from "lucide-react";
 import UserInfo from "./UserInfo";
 import { ROUTES } from "@/types";
 import { useAuthStore } from "@/stores/authStore";
 import { router } from "@/routes";
 import { useSettingsStore } from "@/stores/settingStore";
 import { t } from "i18next";
+import { ProfileDialog } from "./ProfileDialog";
 
 interface MainPageSheetProps {
   children: React.ReactNode;
 }
 
-// const statusConfig = {
-//   online: { label: "Online", color: "bg-green-500", icon: "●" },
-//   offline: { label: "Offline", color: "bg-gray-400", icon: "●" },
-//   sleep: { label: "Sleep", color: "bg-yellow-500", icon: "●" },
-//   dnd: { label: "Do Not Disturb", color: "bg-red-500", icon: "●" },
-// };
-
 function MainPageSheet({ children }: MainPageSheetProps) {
   const { language, setLanguage, theme, setTheme } = useSettingsStore();
-  const { user } = useAuthStore();
-  const { logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 
-  // const handleNavigation = (route: string) => {
-  //   setIsSheetOpen(false);
-  // };
+  const handleProfileClick = () => {
+    setIsSheetOpen(false);
+    setTimeout(() => setIsProfileDialogOpen(true), 200);
+  };
 
   return (
     <>
@@ -47,49 +43,26 @@ function MainPageSheet({ children }: MainPageSheetProps) {
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <SheetHeader className="">
-            {/* User Info Section */}
             <UserInfo />
           </SheetHeader>
 
           <Separator className="mb-2" />
 
-          {/* Navigation Menu */}
           <nav className="flex-1 space-y-1 px-2 py-2">
             <Button
               variant="ghost"
-              className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent hidden"
-              onClick={() => {
-              }}
+              className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent"
+              onClick={handleProfileClick}
             >
               <User className="size-5" />
-              <span>{t('my_profile')}</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent hidden"
-              onClick={() => {
-              }}
-            >
-              <Settings className="size-5" />
-              <span>Settings</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent hidden"
-              onClick={() => {
-              }}
-            >
-              <Info className="size-5" />
-              <span>About</span>
+              <span>{t("my_profile")}</span>
             </Button>
 
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent"
               onClick={() => {
-                setTheme(theme === 'light' ? 'dark' : 'light')
+                setTheme(theme === "light" ? "dark" : "light");
               }}
             >
               <SunMoon className="size-5" />
@@ -100,7 +73,7 @@ function MainPageSheet({ children }: MainPageSheetProps) {
               variant="ghost"
               className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent"
               onClick={() => {
-                setLanguage(language === 'vi' ? 'en' : 'vi')
+                setLanguage(language === "vi" ? "en" : "vi");
               }}
             >
               <Languages className="size-5" />
@@ -112,7 +85,7 @@ function MainPageSheet({ children }: MainPageSheetProps) {
               className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent"
               onClick={() => {
                 logout();
-                router.navigate({to: ROUTES.LOGIN})
+                router.navigate({ to: ROUTES.LOGIN });
               }}
             >
               <LogOut className="size-5" />
@@ -120,12 +93,16 @@ function MainPageSheet({ children }: MainPageSheetProps) {
             </Button>
           </nav>
 
-          {/* Footer */}
           <div className="px-3 py-2 text-xs text-muted-foreground border-t">
-            <p className="truncate">{user?.tel ?? ""}</p> {/* TODO: Change this to some what other */}
+            <p className="truncate">{user?.email ?? ""}</p>
           </div>
         </SheetContent>
       </Sheet>
+
+      <ProfileDialog
+        isOpen={isProfileDialogOpen}
+        onClose={() => setIsProfileDialogOpen(false)}
+      />
     </>
   );
 }
