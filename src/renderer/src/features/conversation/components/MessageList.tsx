@@ -1,6 +1,6 @@
 // src/features/conversation/components/MessageList.tsx
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { MessageItem } from "./MessageItem";
 import { UIMessage, MessageModel, MessageDto } from "@/types";
 import { ws } from "@/lib/api";
@@ -9,30 +9,54 @@ import { useAuthStore } from "@/stores/authStore";
 
 interface MessageListProps {
   conversationId: string;
+  onOptimisticMessageHandler?: (handler: (msg: UIMessage) => void) => void;
 }
 
-export function MessageList({ conversationId }: MessageListProps) {
+export function MessageList({
+  conversationId,
+  onOptimisticMessageHandler,
+}: MessageListProps) {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuthStore();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Enrich backend message with UI data
   const enrichMessage = (msg: MessageModel): UIMessage => ({
     ...msg,
     isMine: msg.senderId === user?.id,
-    status: "sent" as const, // default for fetched messages
+    status: "sent" as const,
   });
 
-  // 1. Initial fetch
+  // Function to add optimistic message
+  const addOptimisticMessage = useCallback((msg: UIMessage) => {
+    console.log("HEHEHEE");
+    setMessages((prev) => [...prev, msg]);
+    setTimeout(
+      () => scrollRef.current?.scrollIntoView({ behavior: "smooth" }),
+      10,
+    );
+  }, []);
+
+  // Expose the handler to parent (ConversationScreen)
+  useEffect(() => {
+    if (onOptimisticMessageHandler) {
+      onOptimisticMessageHandler(addOptimisticMessage);
+    }
+  }, [addOptimisticMessage, onOptimisticMessageHandler]);
+
+  // Initial fetch
   useEffect(() => {
     const fetchMessages = async () => {
-      if (conversationId === "new") return;
+      if (conversationId === "new") {
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       try {
         const data = await apiGet<MessageDto>(
           `/messages/conversation/${conversationId}?limit=50`,
-        ).then();
+        );
         setMessages(data.data.reverse().map(enrichMessage));
       } catch (err) {
         console.error("Failed to load messages:", err);
@@ -44,38 +68,62 @@ export function MessageList({ conversationId }: MessageListProps) {
     fetchMessages();
   }, [conversationId]);
 
-  // 2. Real-time: new messages from others
-  useEffect(() => {
-    const unsubscribe = ws.subscribe(
-      "READ",
-      ({ conversationId: cid, readerId }) => {
-        if (cid !== conversationId) return;
-
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.senderId === user?.id ? { ...m, status: "read" as const } : m,
-          ),
-        );
-      },
-    );
-
-    return unsubscribe;
-  }, [conversationId]);
-
-  // 3. Real-time: ACK for our sent messages (optimistic → confirmed)
   useEffect(() => {
     const unsubscribe = ws.subscribe("ACK", ({ tempId, message }) => {
+      console.log("I GOT ACK", tempId, message);
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === tempId ? { ...enrichMessage(message), status: "sent" } : m,
+          m.id === tempId
+            ? { ...enrichMessage(message), status: "sent" as const }
+            : m,
         ),
       );
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe;
+    };
   }, []);
 
-  // Auto-scroll to bottom on new message
+  // WebSocket: NEW_MESSAGE from others
+  useEffect(() => {
+    if (conversationId === "new") return;
+
+    const unsubscribe = ws.subscribe("NEW_MESSAGE", (payload) => {
+      const msg = payload.message;
+
+      // Only add if it's for THIS conversation
+      if (msg.conversationId !== conversationId) return;
+
+      setMessages((prev) => {
+        // Prevent duplicates
+        if (prev.some((m) => m.id === msg.id)) return prev;
+
+        return [...prev, enrichMessage(msg)];
+      });
+    });
+
+    return () => unsubscribe();
+  }, [conversationId, user?.id]);
+
+  // WebSocket: READ event
+  useEffect(() => {
+    if (conversationId === "new") return;
+
+    const unsubscribe = ws.subscribe("READ", ({ conversationId: cid }) => {
+      if (cid !== conversationId) return;
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.senderId === user?.id ? { ...m, status: "read" as const } : m,
+        ),
+      );
+    });
+
+    return unsubscribe;
+  }, [conversationId, user?.id]);
+
+  // Auto-scroll
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);

@@ -6,14 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ws, apiPost } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
-import { ConversationDto, ROUTES } from "@/types";
+import { ConversationDto, ROUTES, UIMessage } from "@/types";
 import { router } from "@/routes";
 
 interface ChatInputProps {
   conversationId: string;
-  recipientId?: string; // For draft conversations
+  recipientId?: string;
   disabled?: boolean;
   placeholder?: string;
+  onOptimisticMessage?: (message: UIMessage) => void; 
 }
 
 export function ChatInput({
@@ -21,6 +22,7 @@ export function ChatInput({
   recipientId,
   disabled = false,
   placeholder = "Type a message...",
+  onOptimisticMessage,
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -31,16 +33,12 @@ export function ChatInput({
   const TYPING_DELAY = 1000;
   const isDraft = conversationId === "new";
 
-  // Auto-focus on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
   const sendTyping = (isTyping: boolean) => {
-    // Only send typing indicator for real conversations
     if (!isDraft && isTyping) {
-      // Backend expects: { type: "TYPING", conversationId }
-      // It will broadcast to other participants automatically
       ws.send("TYPING", { conversationId });
     }
   };
@@ -55,6 +53,7 @@ export function ChatInput({
 
     try {
       if (isDraft) {
+        // DRAFT MODE: Create conversation via HTTP
         if (!recipientId) {
           console.error("Cannot send: recipientId missing for draft");
           return;
@@ -69,10 +68,7 @@ export function ChatInput({
         });
 
         if (res && res.id) {
-          // Clear input
           setMessage("");
-
-          // Navigate to real conversation
           await router.navigate({
             to: `${ROUTES.CONVERSATION}/$conversationId`,
             params: { conversationId: res.id },
@@ -80,19 +76,40 @@ export function ChatInput({
           });
         }
       } else {
-        // Backend only needs conversationId, content, and tempId
-        // It will handle participant lookup and broadcasting
+        // REAL CONVERSATION: Optimistic update + WebSocket
+        
+        // 1. Create optimistic message
+        const optimisticMsg: UIMessage = {
+          id: tempId,
+          content: { content: trimmed, type: "text" },
+          conversationId,
+          senderId: user.id,
+          createdAt: new Date().toISOString(),
+          reaction: [],
+          isMine: true,
+          status: "sending", // Show as "sending"
+        };
+
+        // 2. Add to UI immediately
+        console.log("ASDAS: ", onOptimisticMessage);
+        if (onOptimisticMessage) {
+          console.log("HEREAAA")
+          onOptimisticMessage(optimisticMsg);
+        }
+
+        // 3. Clear input
+        setMessage("");
+
+        // 4. Send via WebSocket
         ws.send("SEND_MESSAGE", {
           content: {
-            data: message,
-            type: "text", // TODO: If need to make img
+            data: trimmed,
+            type: "text",
           },
           destinationId: conversationId,
           destinationType: "conversation",
-          tempId: tempId
+          tempId: tempId,
         });
-
-        setMessage("");
       }
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -106,7 +123,6 @@ export function ChatInput({
     const value = e.target.value;
     setMessage(value);
 
-    // Only send typing indicator for real conversations
     if (isDraft) return;
 
     if (typingTimer.current) clearTimeout(typingTimer.current);
@@ -135,7 +151,6 @@ export function ChatInput({
   return (
     <div className="bg-background border-t p-3 md:p-4">
       <div className="flex items-center gap-2 max-w-4xl mx-auto w-full">
-        {/* Attachment Button (future feature) */}
         <Button
           variant="ghost"
           size="icon"
@@ -145,7 +160,6 @@ export function ChatInput({
           <Plus className="w-5 h-5" />
         </Button>
 
-        {/* Input Field */}
         <div className="flex-1 relative">
           <Input
             ref={inputRef}
@@ -158,7 +172,6 @@ export function ChatInput({
             className="pr-10 h-11 rounded-full bg-secondary/50 border-transparent focus:bg-background focus:border-input transition-all"
           />
 
-          {/* Emoji Picker Trigger */}
           <button
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
             disabled={disabled || isSending}
@@ -167,7 +180,6 @@ export function ChatInput({
           </button>
         </div>
 
-        {/* Send Button */}
         <Button
           onClick={handleSend}
           disabled={!message.trim() || disabled || isSending}
