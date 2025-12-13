@@ -1,9 +1,10 @@
 // src/features/conversation/components/MessageItem.tsx
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Check, CheckCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UIMessage } from "@/types";
+import { useAuthStore } from "@/stores/authStore";
 
 interface MessageItemProps {
   message: UIMessage;
@@ -11,8 +12,32 @@ interface MessageItemProps {
 }
 
 export function MessageItem({ message, onClick }: MessageItemProps) {
+  const { user } = useAuthStore();
   const textContent = message.content?.content || "";
   const isMine = message.isMine;
+
+  // ✅ Group reactions by type
+  const groupedReactions = useMemo(() => {
+    const groups = new Map<string, { count: number; hasUserReacted: boolean; emoji: string }>();
+
+    message.reaction?.forEach((r) => {
+      const existing = groups.get(r.type) || { count: 0, hasUserReacted: false, emoji: "" };
+      
+      existing.count++;
+      if (r.sender === user?.id) {
+        existing.hasUserReacted = true;
+      }
+
+      // Set emoji
+      if (r.type === "like") existing.emoji = "👍";
+      else if (r.type === "heart") existing.emoji = "❤️";
+      else if (r.type === "laugh") existing.emoji = "😂";
+
+      groups.set(r.type, existing);
+    });
+
+    return Array.from(groups.entries());
+  }, [message.reaction, user?.id]);
 
   const formatTime = (date?: string | Date) => {
     if (!date) return "";
@@ -65,24 +90,6 @@ export function MessageItem({ message, onClick }: MessageItemProps) {
             {textContent}
           </p>
 
-          {/* REACTIONS */}
-          {message.reaction && message.reaction.length > 0 && (
-            <div className="flex gap-1 mt-1.5 flex-wrap">
-              {message.reaction.map((r, idx) => (
-                <span
-                  key={idx}
-                  className="text-[10px] bg-background/20 backdrop-blur-sm rounded-full px-1.5 py-0.5 border border-background/30"
-                >
-                  {r.type === "like"
-                    ? "👍"
-                    : r.type === "heart"
-                      ? "❤️"
-                      : "😂"}
-                </span>
-              ))}
-            </div>
-          )}
-
           {/* FOOTER: Time + Status */}
           <div className="flex items-center justify-end gap-1 mt-1 opacity-70">
             <span className="text-[10px]">
@@ -96,6 +103,27 @@ export function MessageItem({ message, onClick }: MessageItemProps) {
             )}
           </div>
         </div>
+
+        {/* ✅ GROUPED REACTIONS - Outside bubble */}
+        {groupedReactions.length > 0 && (
+          <div className="flex gap-1 mt-1 flex-wrap">
+            {groupedReactions.map(([type, data]) => (
+              <span
+                key={type}
+                className={cn(
+                  "text-xs px-2 py-0.5 rounded-full border flex items-center gap-1",
+                  "bg-background/90 backdrop-blur-sm shadow-sm",
+                  data.hasUserReacted 
+                    ? "border-primary/50 ring-1 ring-primary/20" 
+                    : "border-border"
+                )}
+              >
+                <span>{data.emoji}</span>
+                <span className="font-medium">{data.count}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

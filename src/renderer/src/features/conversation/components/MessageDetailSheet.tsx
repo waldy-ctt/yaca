@@ -1,4 +1,6 @@
 // src/features/conversation/components/MessageDetailSheet.tsx
+
+import { useMemo, useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -9,11 +11,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Copy, Reply, Trash2, Clock, Check, CheckCheck } from "lucide-react";
 import { UIMessage } from "@/types";
-import { apiPost, apiDelete } from "@/lib/api";
-import { useState } from "react";
+import { apiPost, apiDelete, apiGet } from "@/lib/api";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
+import { useAuthStore } from "@/stores/authStore";
+import { cn } from "@/lib/utils";
 
 interface MessageDetailSheetProps {
   isOpen: boolean;
@@ -34,7 +37,74 @@ export function MessageDetailSheet({
   message,
   onDelete,
 }: MessageDetailSheetProps) {
+  const { user } = useAuthStore();
   const [isReacting, setIsReacting] = useState(false);
+  const [reactionUsers, setReactionUsers] = useState<Record<string, string[]>>({});
+
+  // ✅ Fetch user names for reactions
+  useEffect(() => {
+    if (!message || !message.reaction || message.reaction.length === 0) {
+      setReactionUsers({});
+      return;
+    }
+
+    const fetchUsers = async () => {
+      const userMap: Record<string, string[]> = {};
+
+      for (const reaction of message.reaction) {
+        if (!userMap[reaction.type]) {
+          userMap[reaction.type] = [];
+        }
+
+        // Fetch user name
+        try {
+          const userData = await apiGet<any>(`/users/${reaction.sender}`);
+          userMap[reaction.type].push(userData.name || "Unknown");
+        } catch (e) {
+          userMap[reaction.type].push("Unknown");
+        }
+      }
+
+      setReactionUsers(userMap);
+    };
+
+    fetchUsers();
+  }, [message?.reaction]);
+
+  // ✅ Group reactions by type with counts
+  const groupedReactions = useMemo(() => {
+    if (!message?.reaction) return [];
+
+    const groups = new Map<string, { 
+      count: number; 
+      hasUserReacted: boolean; 
+      emoji: string;
+      users: string[];
+    }>();
+
+    message.reaction.forEach((r) => {
+      const existing = groups.get(r.type) || { 
+        count: 0, 
+        hasUserReacted: false, 
+        emoji: "",
+        users: []
+      };
+      
+      existing.count++;
+      if (r.sender === user?.id) {
+        existing.hasUserReacted = true;
+      }
+
+      // Set emoji
+      if (r.type === "like") existing.emoji = "👍";
+      else if (r.type === "heart") existing.emoji = "❤️";
+      else if (r.type === "laugh") existing.emoji = "😂";
+
+      groups.set(r.type, existing);
+    });
+
+    return Array.from(groups.entries());
+  }, [message?.reaction, user?.id]);
 
   if (!message) return null;
 
@@ -44,7 +114,6 @@ export function MessageDetailSheet({
     setIsReacting(true);
     try {
       await apiPost(`/messages/${message.id}/reactions`, { reactionType });
-      // Real-time update will come via WebSocket
       onClose();
     } catch (error) {
       console.error("Failed to add reaction:", error);
@@ -119,42 +188,81 @@ export function MessageDetailSheet({
             {message.isMine && getStatusIcon()}
           </div>
           <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content.content}</p>
-          
-          {/* Current Reactions */}
-          {message.reaction && message.reaction.length > 0 && (
-            <div className="flex gap-2 mt-3 flex-wrap">
-              {message.reaction.map((r, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-1 px-2 py-1 rounded-full bg-background border text-xs"
-                >
-                  <span>
-                    {r.type === "like" ? "👍" : r.type === "heart" ? "❤️" : "😂"}
-                  </span>
-                  <span className="text-muted-foreground">1</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
-        <Separator className="mb-6" />
+        {/* ✅ IMPROVED: Show grouped reactions with names */}
+        {groupedReactions.length > 0 && (
+          <>
+            <div className="mb-6">
+              <h4 className="text-sm font-medium mb-3">Reactions</h4>
+              <div className="space-y-2">
+                {groupedReactions.map(([type, data]) => (
+                  <div
+                    key={type}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-lg border",
+                      data.hasUserReacted 
+                        ? "bg-primary/5 border-primary/30" 
+                        : "bg-secondary/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{data.emoji}</span>
+                      <div>
+                        <p className="text-sm font-medium">
+                          {data.count} {data.count === 1 ? "reaction" : "reactions"}
+                        </p>
+                        {reactionUsers[type] && (
+                          <p className="text-xs text-muted-foreground">
+                            {reactionUsers[type].join(", ")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {data.hasUserReacted && (
+                      <span className="text-xs text-primary font-medium">
+                        You reacted
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Separator className="mb-6" />
+          </>
+        )}
 
         {/* Quick Reactions */}
         <div className="mb-6 space-y-3">
           <h4 className="text-sm font-medium">Quick Reactions</h4>
           <div className="flex gap-2 flex-wrap">
-            {REACTIONS.map(({ emoji, type }) => (
-              <button
-                key={type}
-                onClick={() => handleReaction(type)}
-                disabled={isReacting}
-                className="text-3xl hover:scale-125 transition-transform active:scale-95 bg-secondary/50 hover:bg-secondary rounded-xl p-3 w-16 h-16 flex items-center justify-center disabled:opacity-50"
-              >
-                {emoji}
-              </button>
-            ))}
+            {REACTIONS.map(({ emoji, type }) => {
+              const hasReacted = groupedReactions.some(
+                ([t, data]) => t === type && data.hasUserReacted
+              );
+
+              return (
+                <button
+                  key={type}
+                  onClick={() => handleReaction(type)}
+                  disabled={isReacting}
+                  className={cn(
+                    "text-3xl hover:scale-125 transition-all active:scale-95",
+                    "rounded-xl p-3 w-16 h-16 flex items-center justify-center",
+                    "disabled:opacity-50 border-2",
+                    hasReacted 
+                      ? "bg-primary/10 border-primary shadow-md" 
+                      : "bg-secondary/50 hover:bg-secondary border-transparent"
+                  )}
+                >
+                  {emoji}
+                </button>
+              );
+            })}
           </div>
+          <p className="text-xs text-muted-foreground">
+            Tap again to remove your reaction
+          </p>
         </div>
 
         <Separator className="mb-6" />
