@@ -2,15 +2,23 @@ import { useParams } from "@tanstack/react-router";
 import { ChatHeader } from "./components/ChatHeader";
 import { MessageList } from "./components/MessageList";
 import { ChatInput } from "./components/ChatInput";
+import { useConversationList } from "../conversationList/hooks/useConversationList";
+import { useEffect } from "react";
+import { ws } from "@/lib/api";
 
 function ConversationScreen() {
   const { conversationId } = useParams({
     from: "/conversation/$conversationId",
   });
+  const { markAsRead } = useConversationList();
 
-  // Remove any:
-  // const { recipientId } = useSearch({ from: "/conversation/new" });
-  // or draft mode checks
+  useEffect(() => {
+    if (!conversationId) return;
+
+    markAsRead(conversationId);
+
+    ws.send("READ", { conversationId });
+  }, [conversationId]);
 
   // Now conversationId is ALWAYS defined and real
   if (!conversationId || conversationId === "new") {

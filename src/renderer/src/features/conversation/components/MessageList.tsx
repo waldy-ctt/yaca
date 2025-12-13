@@ -30,7 +30,7 @@ export function MessageList({ conversationId }: MessageListProps) {
       setIsLoading(true);
       try {
         const data = await apiGet<MessageModel[]>(
-          `/message/conversation/${conversationId}?limit=50`
+          `/message/conversation/${conversationId}?limit=50`,
         );
         // Backend likely newest first → reverse to chronological
         setMessages(data.reverse().map(enrichMessage));
@@ -46,15 +46,20 @@ export function MessageList({ conversationId }: MessageListProps) {
 
   // 2. Real-time: new messages from others
   useEffect(() => {
-    const unsubscribe = ws.subscribe("NEW_MESSAGE", (payload) => {
-      const { message }: { message: MessageModel } = payload;
+    const unsubscribe = ws.subscribe(
+      "READ",
+      ({ conversationId: cid, readerId }) => {
+        if (cid !== conversationId) return;
 
-      if (message.conversationId !== conversationId) return;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.senderId === user?.id ? { ...m, status: "read" as const } : m,
+          ),
+        );
+      },
+    );
 
-      setMessages((prev) => [...prev, enrichMessage(message)]);
-    });
-
-    return () => unsubscribe();
+    return unsubscribe;
   }, [conversationId]);
 
   // 3. Real-time: ACK for our sent messages (optimistic → confirmed)
@@ -62,8 +67,8 @@ export function MessageList({ conversationId }: MessageListProps) {
     const unsubscribe = ws.subscribe("ACK", ({ tempId, message }) => {
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === tempId ? { ...enrichMessage(message), status: "sent" } : m
-        )
+          m.id === tempId ? { ...enrichMessage(message), status: "sent" } : m,
+        ),
       );
     });
 

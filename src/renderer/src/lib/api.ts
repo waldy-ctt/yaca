@@ -62,8 +62,7 @@ export const apiPost = <T, B = unknown>(url: string, body?: B) =>
   });
 export const apiPut = <T, B = unknown>(url: string, body?: B) =>
   api<T>(url, { method: "PUT", body: body ? JSON.stringify(body) : undefined });
-export const apiDelete = <T>(url: string) =>
-  api<T>(url, { method: "DELETE" });
+export const apiDelete = <T>(url: string) => api<T>(url, { method: "DELETE" });
 
 // -------------------------------------------------------------------------
 // 2. WEBSOCKET SERVICE
@@ -74,16 +73,23 @@ export interface WebSocketEventMap {
   ACK: { tempId: string; message: MessageModel };
   MESSAGE_UPDATED: { message: MessageModel };
   MESSAGE_DELETED: { messageId: string };
-  USER_TYPING: { conversationId: string }; 
+  USER_TYPING: { conversationId: string };
+  READ: { conversationId: string; readerId: string };
   ERROR: { error: string };
 }
 
 export interface WebSocketEmitMap {
-  SEND_MESSAGE: { conversationId: string; content: string; toUserId: string; tempId: string };
+  SEND_MESSAGE: {
+    conversationId: string;
+    content: string;
+    toUserId: string;
+    tempId: string;
+  };
   EDIT_MESSAGE: { messageId: string; newContent: string; toUserId: string };
   REACT_MESSAGE: { messageId: string; reactionType: string; toUserId: string };
   DELETE_MESSAGE: { messageId: string; toUserId: string };
   TYPING: { conversationId: string };
+  READ: { conversationId: string };
 }
 
 export type WSEventType = keyof WebSocketEventMap;
