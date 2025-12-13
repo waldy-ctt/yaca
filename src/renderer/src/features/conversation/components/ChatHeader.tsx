@@ -1,15 +1,16 @@
 // src/features/conversation/components/ChatHeader.tsx
 
+import { useState, useEffect } from "react";
 import { ArrowLeft, MoreVertical, Phone, Video } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { router } from "@/routes";
 import { getInitials } from "@/lib/utils";
 import { apiGet, ws } from "@/lib/api";
-import { useEffect, useState } from "react";
 import { presence_status, UserModel } from "@/types";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
+import { ConversationInfoSheet } from "./ConversationInfoSheet";
 
 interface ChatHeaderProps {
   conversationId: string;
@@ -29,6 +30,7 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
   const [info, setInfo] = useState<ConversationHeaderInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [showInfoSheet, setShowInfoSheet] = useState(false); // ✅ NEW
 
   const isDraft = conversationId === "new";
   const is1on1 = info?.participantCount === 2;
@@ -148,71 +150,83 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
   console.log("🎨 Rendering header with:", { name, status, is1on1, opponentId: info?.opponentId });
 
   return (
-    <header className="h-16 border-b flex items-center px-4 justify-between bg-card/80 backdrop-blur-sm sticky top-0 z-10 shrink-0">
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => router.history.back()}
-          className="shrink-0 -ml-2"
-        >
-          <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-        </Button>
-
+    <>
+      <header className="h-16 border-b flex items-center px-4 justify-between bg-card/80 backdrop-blur-sm sticky top-0 z-10 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <Avatar className="h-10 w-10 border border-border">
-              <AvatarImage src={avatar || ""} className="object-cover" />
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                {getInitials(name)}
-              </AvatarFallback>
-            </Avatar>
-            
-            {is1on1 && (
-              <div className="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-background bg-background flex items-center justify-center">
-                <div className={cn("w-2.5 h-2.5 rounded-full", getStatusColor())} />
-              </div>
-            )}
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.history.back()}
+            className="shrink-0 -ml-2"
+          >
+            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+          </Button>
 
-          <div className="flex flex-col justify-center">
-            <h2 className="text-sm font-semibold leading-none">{name}</h2>
-            {isLoading ? (
-              <p className="text-xs text-muted-foreground mt-1">Loading...</p>
-            ) : isTyping ? (
-              // ✅ Enhanced typing indicator
-              <div className="flex items-center gap-1 mt-1">
-                <span className="text-xs text-primary italic">typing</span>
-                <span className="flex gap-0.5">
-                  <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                </span>
-              </div>
-            ) : is1on1 ? (
-              <p className="text-xs text-muted-foreground capitalize mt-1">
-                {status}
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground mt-1">
-                {info?.participantCount} participants
-              </p>
-            )}
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Avatar className="h-10 w-10 border border-border">
+                <AvatarImage src={avatar || ""} className="object-cover" />
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  {getInitials(name)}
+                </AvatarFallback>
+              </Avatar>
+              
+              {is1on1 && (
+                <div className="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-background bg-background flex items-center justify-center">
+                  <div className={cn("w-2.5 h-2.5 rounded-full", getStatusColor())} />
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col justify-center">
+              <h2 className="text-sm font-semibold leading-none">{name}</h2>
+              {isLoading ? (
+                <p className="text-xs text-muted-foreground mt-1">Loading...</p>
+              ) : isTyping ? (
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="text-xs text-primary italic">typing</span>
+                  <span className="flex gap-0.5">
+                    <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </span>
+                </div>
+              ) : is1on1 ? (
+                <p className="text-xs text-muted-foreground capitalize mt-1">
+                  {status}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {info?.participantCount} participants
+                </p>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
-          <Phone className="w-5 h-5 text-muted-foreground" />
-        </Button>
-        <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
-          <Video className="w-5 h-5 text-muted-foreground" />
-        </Button>
-        <Button variant="ghost" size="icon">
-          <MoreVertical className="w-5 h-5 text-muted-foreground" />
-        </Button>
-      </div>
-    </header>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
+            <Phone className="w-5 h-5 text-muted-foreground" />
+          </Button>
+          <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
+            <Video className="w-5 h-5 text-muted-foreground" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => setShowInfoSheet(true)}
+          >
+            <MoreVertical className="w-5 h-5 text-muted-foreground" />
+          </Button>
+        </div>
+      </header>
+
+      {/* ✅ Conversation Info Sheet */}
+      <ConversationInfoSheet
+        isOpen={showInfoSheet}
+        onClose={() => setShowInfoSheet(false)}
+        conversationId={conversationId}
+      />
+    </>
   );
 }
