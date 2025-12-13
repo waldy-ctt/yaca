@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { UIMessage } from "@/types";
+import { presence_status, UIMessage } from "@/types";
 import { useChat } from "./hooks/useChat";
 import { ChatHeader } from "./components/ChatHeader";
 import { MessageList } from "./components/MessageList";
@@ -22,6 +22,7 @@ function ConversationScreen() {
   const [selectedMessage, setSelectedMessage] = useState<UIMessage | null>(
     null,
   );
+
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isUserSheetOpen, setIsUserSheetOpen] = useState(false);
 
@@ -58,20 +59,13 @@ function ConversationScreen() {
 
   return (
     <div className="flex flex-col h-screen bg-background relative">
-      <div
-        onClick={() => {
-          setIsUserSheetOpen(true);
-        }}
-        className="cursor-pointer"
-      >
+      <div onClick={() => setIsUserSheetOpen(true)} className="cursor-pointer">
         <ChatHeader
           conversation={conversation}
-          // draftName={draftUser?.name}
-          // draftAvatar={draftUser?.avatar}
-          // draftStatus={draftUser?.status}
-          draftName={""}
-          draftAvatar={""}
-          draftStatus={""}
+          // 2. Pass draft data so the header isn't empty on new chats
+          draftName={"New Chat"}
+          draftAvatar={null}
+          draftStatus={presence_status.NONE}
         />
       </div>
 
@@ -87,31 +81,35 @@ function ConversationScreen() {
       />
 
       {/* INPUT AREA */}
-      <ChatInput onSend={sendMessage} disabled={isLoading} />
+      <ChatInput
+        onSend={async (content) => {
+          await sendMessage(content);
+          // 3. No setConversationId needed here.
+          // sendMessage handles navigation -> URL updates -> Component re-renders with new ID.
+        }}
+        disabled={isLoading}
+      />
 
       {/* --- OVERLAYS --- */}
 
-      {/* 1. Message Details (Reactions, Copy, Delete) */}
       <MessageDetailSheet
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         message={selectedMessage}
         onReaction={(emoji) => {
-          console.log("TODO: React with", emoji, "to", selectedMessage?.id);
-          // Implement ws.send("REACT_MESSAGE", ...) in useChat later
+          console.log("TODO: React", emoji);
         }}
         onDelete={() => {
-          console.log("TODO: Delete message", selectedMessage?.id);
-          // Implement ws.send("DELETE_MESSAGE", ...) in useChat later
+          console.log("TODO: Delete");
         }}
       />
 
-      {/* 2. User/Group Info Side Sheet */}
       <UserSideSheet
         isOpen={isUserSheetOpen}
         onClose={() => setIsUserSheetOpen(false)}
-        // Pass either the full conversation or just the draft user info
+        // Use conversation if available, otherwise fall back to draftUser
         data={conversation}
+        conversationId={conversationId}
       />
     </div>
   );

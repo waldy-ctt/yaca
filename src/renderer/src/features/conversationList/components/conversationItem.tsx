@@ -1,13 +1,14 @@
+import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn, getInitials } from "@/lib/utils";
-import { Pin } from "lucide-react";
+import { Pin, Image as ImageIcon } from "lucide-react"; // Added ImageIcon
 
 interface ConversationProps {
   name: string;
-  lastMessage: string;
+  lastMessage: string; // This is the JSON string
   isPinned: boolean;
-  isRead: boolean; // if false -> show unread indicator
-  latestTimestamp: Date;
+  isRead: boolean;
+  latestTimestamp: string | Date; // Relaxed type to allow Date objects too
   opponentAvatar: string | null;
   onClick?: () => void;
 }
@@ -21,28 +22,49 @@ export function ConversationItem({
   opponentAvatar,
   onClick,
 }: ConversationProps) {
+  
+  // 1. PARSE MESSAGE CONTENT
+  const messagePreview = useMemo(() => {
+    try {
+      // Attempt to parse the JSON string: '{"content": "...", "type": "..."}'
+      const parsed = JSON.parse(lastMessage);
+      
+      // Handle different message types
+      if (parsed.type === "image") {
+        return (
+          <span className="flex items-center gap-1">
+            <ImageIcon className="w-3 h-3" />
+            Sent an image
+          </span>
+        );
+      }
+      
+      // Default: Return the text content
+      return parsed.content;
+    } catch (e) {
+      // Fallback: If it's not JSON, display as-is (e.g. "Started a conversation")
+      return lastMessage;
+    }
+  }, [lastMessage]);
+
+  // 2. FORMAT TIME
   const formattedTime = (() => {
     const now = new Date();
     const messageDate = new Date(latestTimestamp);
 
-    // Check if it's the same calendar day
     const isToday =
       now.getDate() === messageDate.getDate() &&
       now.getMonth() === messageDate.getMonth() &&
       now.getFullYear() === messageDate.getFullYear();
 
     if (isToday) {
-      // Same day: Return HH:MM:SS (or HH:MM)
       return messageDate.toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
-        second: "2-digit", // kept seconds as per your previous code
         hour12: false,
       });
     } else {
-      // Old message: Return YYYY-MM-DD
-      // 'en-CA' is a shortcut for ISO format (YYYY-MM-DD)
-      return messageDate.toLocaleDateString("en-CA");
+      return messageDate.toLocaleDateString("en-CA"); // YYYY-MM-DD
     }
   })();
 
@@ -78,9 +100,10 @@ export function ConversationItem({
         </div>
 
         <div className="flex justify-between items-center">
-          <p className={cn("text-sm truncate pr-2", "text-muted-foreground")}>
-            {lastMessage}
-          </p>
+          {/* 3. USE PARSED PREVIEW HERE */}
+          <div className={cn("text-sm truncate pr-2 flex-1", "text-muted-foreground")}>
+            {messagePreview}
+          </div>
 
           <div className="flex items-center gap-2 shrink-0 h-5">
             {isPinned && (

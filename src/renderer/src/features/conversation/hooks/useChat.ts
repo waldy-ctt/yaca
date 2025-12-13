@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearch } from "@tanstack/react-router";
-import { ws, apiGet, apiPost } from "@/lib/api";
+import { ws, apiGet, apiPost, apiDelete } from "@/lib/api";
 import {
-  MessageModel,
   ConversationModel,
   UIMessage,
   MessageDto,
+  ConversationDto,
+  presence_status,
+  ROUTES,
 } from "@/types"; // Import UIMessage!
 import { useAuthStore } from "@/stores/authStore";
+import { router } from "@/routes";
 
 interface ChatSearchParams {
   recipientId?: string;
@@ -39,6 +42,23 @@ export function useChat(conversationId: string) {
       senderId: raw.senderId,
       isMine: raw.senderId === user?.id,
       status: "read",
+    };
+  };
+
+  const mapConversationDtoToConversationModel = (
+    raw: ConversationDto,
+  ): ConversationModel => {
+    return {
+      lastMessage: raw.lastMessage,
+      avatar: raw.avatar,
+      id: raw.id,
+      isPinned: false,
+      isRead: false,
+      lastMessageTime: raw.lastMessageTimestamp,
+      participants: raw.participants,
+      name: raw.name,
+      status: presence_status.NONE,
+      unreadMessageAmount: 0,
     };
   };
 
@@ -115,36 +135,41 @@ export function useChat(conversationId: string) {
   }, [conversationId, user?.id]);
 
   // ----------------------------------------------------------------
-  // 3. SEND MESSAGE
+  // 3. SEND MESSAGE (The "Draft -> Real" Fix)
   // ----------------------------------------------------------------
   const sendMessage = async (content: string) => {
     if (!user?.id) return;
 
+    // 1. Identify Recipient
+    // If it's a new draft, we use the URL param. If it's real, we find the "other" participant.
     const targetUserId =
       conversationId === "new"
         ? draftRecipientId
-        : conversation?.participants.find((id) => id !== user.id);
+        : conversation?.participants?.find((p) => p !== user.id) || "";
 
-    if (!targetUserId) return;
+    if (!targetUserId) {
+      console.error("Cannot send: Target user ID missing");
+      return;
+    }
 
     const tempId = Date.now().toString();
 
+    // 2. Optimistic Update (Show message instantly)
     const optimisticMsg: UIMessage = {
       id: tempId,
       content: { content: content, type: "text" },
       createdAt: new Date().toISOString(),
       isPinned: false,
       isRead: true,
-      participantsIdList: [user.id, targetUserId],
-      lastMessageTime: new Date(),
+      participants: [user.id, targetUserId], // Add if your model requires it
 
       senderId: user.id,
       isMine: true,
       conversationId: conversationId,
       reaction: [],
       status: "sending",
-      name: user.name || "Me",
-      avatar: user.avatar || "",
+      senderName: user.name || "Me",
+      senderAvatar: user.avatar || undefined,
     } as unknown as UIMessage;
 
     setMessages((prev) => [...prev, optimisticMsg]);
@@ -155,13 +180,25 @@ export function useChat(conversationId: string) {
 
     try {
       if (conversationId === "new") {
-        const res = await apiPost<{ id: string }>("/conversation", {
+        // CASE A: NEW CONVERSATION (HTTP)
+        const res = await apiPost<ConversationDto>("/conversation", {
           recipientId: targetUserId,
           content,
+          participants: [user.id, targetUserId],
+          senderId: user.id,
           type: "text",
         });
-        return res?.id;
+
+        if (res && res.id) {
+          await router.navigate({
+            to: `${ROUTES.CONVERSATION}/$conversationId`,
+            params: { conversationId: res.id },
+            replace: true, // Replaces "new" in history so Back button works naturally
+          });
+          return res.id;
+        }
       } else {
+        // CASE B: EXISTING CONVERSATION (WebSocket)
         ws.send("SEND_MESSAGE", {
           conversationId,
           content,
@@ -171,9 +208,18 @@ export function useChat(conversationId: string) {
       }
     } catch (e) {
       console.error("Send failed", e);
+      // Mark message as failed in UI
       setMessages((prev) =>
         prev.map((m) => (m.id === tempId ? { ...m, status: "failed" } : m)),
       );
+    }
+  };
+
+  const deleteConversation = async (conversationId: string) => {
+    const res = await apiDelete<boolean>(`/conversation/${conversationId}`);
+    if (res) {
+      setConversation(null);
+      router.navigate({ to: ROUTES.HOME });
     }
   };
 
@@ -183,5 +229,6 @@ export function useChat(conversationId: string) {
     isLoading,
     sendMessage,
     scrollToBottomRef,
+    deleteConversation,
   };
 }

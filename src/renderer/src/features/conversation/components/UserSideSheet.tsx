@@ -1,19 +1,24 @@
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Phone, Video } from "lucide-react";
+import { ChevronRight, Delete, Phone, Video } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import { ConversationModel, UserModel } from "@/types";
+import { useChat } from "../hooks/useChat";
 
 interface UserSideSheetProps {
   isOpen: boolean;
   onClose: () => void;
   // Can be a full conversation OR a user profile (for drafts)
   data: ConversationModel | UserModel | null;
+  conversationId: string;
 }
 
-export function UserSideSheet({ isOpen, onClose, data }: UserSideSheetProps) {
+export function UserSideSheet({ isOpen, onClose, data, conversationId }: UserSideSheetProps) {
+  const { deleteConversation } = useChat(conversationId);
+
   if (!data) return null;
+
 
   // Normalization logic: Handle both ConversationModel and UserModel
   const name = "name" in data ? data.name : "Chat";
@@ -50,10 +55,18 @@ export function UserSideSheet({ isOpen, onClose, data }: UserSideSheetProps) {
             <div className="grid grid-cols-3 gap-2">
               <Button
                 variant="outline"
-                className="flex flex-col h-auto py-3 gap-1"
+                className="flex flex-col h-auto py-3 gap-1 hidden"
               >
                 <Phone className="w-4 h-4" />
                 <span className="text-[10px]">Call</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="flex flex-col h-auto py-3 gap-1"
+                onClick={() => {deleteConversation(conversationId)}}
+              >
+                <Delete className="w-4 h-4" />
+                <span className="text-[10px]">Delete Chat</span>
               </Button>
               <Button
                 variant="outline"

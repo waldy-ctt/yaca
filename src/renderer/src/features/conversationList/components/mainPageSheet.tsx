@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -7,10 +7,9 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { User, Settings, Info } from "lucide-react";
+import { User, Settings, Info, LogOut, Languages, SunMoon } from "lucide-react";
 import UserInfo from "./userInfo";
-import { presence_status, ROUTES } from "@/types";
-import { useUserStore } from "@/stores/userStore";
+import { ROUTES } from "@/types";
 import { useAuthStore } from "@/stores/authStore";
 import { router } from "@/routes";
 import { useSettingsStore } from "@/stores/settingStore";
@@ -20,12 +19,12 @@ interface MainPageSheetProps {
   children: React.ReactNode;
 }
 
-const statusConfig = {
-  online: { label: "Online", color: "bg-green-500", icon: "●" },
-  offline: { label: "Offline", color: "bg-gray-400", icon: "●" },
-  sleep: { label: "Sleep", color: "bg-yellow-500", icon: "●" },
-  dnd: { label: "Do Not Disturb", color: "bg-red-500", icon: "●" },
-};
+// const statusConfig = {
+//   online: { label: "Online", color: "bg-green-500", icon: "●" },
+//   offline: { label: "Offline", color: "bg-gray-400", icon: "●" },
+//   sleep: { label: "Sleep", color: "bg-yellow-500", icon: "●" },
+//   dnd: { label: "Do Not Disturb", color: "bg-red-500", icon: "●" },
+// };
 
 function MainPageSheet({ children }: MainPageSheetProps) {
   const { language, setLanguage, theme, setTheme } = useSettingsStore();
@@ -34,10 +33,9 @@ function MainPageSheet({ children }: MainPageSheetProps) {
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const handleNavigation = (route: string) => {
-    console.log(`Navigating to: ${route}`);
-    setIsSheetOpen(false);
-  };
+  // const handleNavigation = (route: string) => {
+  //   setIsSheetOpen(false);
+  // };
 
   return (
     <>
@@ -59,13 +57,32 @@ function MainPageSheet({ children }: MainPageSheetProps) {
           <nav className="flex-1 space-y-1 px-2 py-2">
             <Button
               variant="ghost"
-              className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent"
+              className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent hidden"
               onClick={() => {
-                setLanguage(language === 'vi' ? 'en' : 'vi')
               }}
             >
               <User className="size-5" />
               <span>{t('my_profile')}</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent hidden"
+              onClick={() => {
+              }}
+            >
+              <Settings className="size-5" />
+              <span>Settings</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent hidden"
+              onClick={() => {
+              }}
+            >
+              <Info className="size-5" />
+              <span>About</span>
             </Button>
 
             <Button
@@ -75,8 +92,19 @@ function MainPageSheet({ children }: MainPageSheetProps) {
                 setTheme(theme === 'light' ? 'dark' : 'light')
               }}
             >
-              <Settings className="size-5" />
-              <span>Settings</span>
+              <SunMoon className="size-5" />
+              <span>Change Theme</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-11 text-base font-normal hover:bg-accent"
+              onClick={() => {
+                setLanguage(language === 'vi' ? 'en' : 'vi')
+              }}
+            >
+              <Languages className="size-5" />
+              <span>Change Language</span>
             </Button>
 
             <Button
@@ -87,8 +115,8 @@ function MainPageSheet({ children }: MainPageSheetProps) {
                 router.navigate({to: ROUTES.LOGIN})
               }}
             >
-              <Info className="size-5" />
-              <span>About</span>
+              <LogOut className="size-5" />
+              <span>LogOut</span>
             </Button>
           </nav>
 

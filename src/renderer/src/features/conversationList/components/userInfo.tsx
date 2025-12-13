@@ -65,7 +65,7 @@ function UserInfo(): JSX.Element {
         {/* Status Button */}
         <button
           onClick={() => setIsStatusOpen(true)}
-          className="flex items-center gap-2 px-3 pt-2 rounded-lg hover:bg-accent transition-colors group focus:outline-none"
+          className="flex items-center gap-2 px-3 pt-2 rounded-lg hover:bg-accent transition-colors group focus:outline-none hidden"
         >
           <div
             className={`size-3 rounded-full ${statusConfig.get(status)?.color}`}

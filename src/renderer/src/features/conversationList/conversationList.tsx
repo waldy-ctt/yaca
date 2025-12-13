@@ -4,10 +4,10 @@ import MainPageSheet from "./components/mainPageSheet";
 import { ConversationItem } from "./components/conversationItem";
 import { t } from "i18next";
 import { router } from "@/routes";
-import { ROUTES } from "@/types";
-import { useEffect, useState } from "react";
+import {  ROUTES } from "@/types";
+import { useState } from "react";
 import NewConversationSheet from "./newConversationSheet";
-import { apiGet } from "@/lib/api";
+import { useConversationList } from "./hooks/useConversationList";
 
 function ConversationListScreen() {
   return (
@@ -25,59 +25,13 @@ function ConversationListScreen() {
 
 export default ConversationListScreen;
 
-interface Convo {
-  id: string; // Added ID so we can navigate correctly
-  lastMessage: string;
-  name: string;
-  opponentAvatar: string | null;
-  isPinned: boolean;
-  latestTimestamp: string | Date; // Allow both for flexibility
-  isRead: boolean;
-}
-
 function ConversationList() {
-  // 1. One source of truth for state
-  const [conversations, setConversations] = useState<Convo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // 2. The Fetch Logic
-  const fetchConversationList = async () => {
-    try {
-      // Assuming apiGet returns an array or { data: Array }
-      const response: any = await apiGet("/conversation");
-
-      // Safety check: Ensure we are mapping over an array
-      // If your API returns { data: [...] }, change this to response.data
-      const rawData = Array.isArray(response) ? response : response.data || [];
-
-      const formattedData: Convo[] = rawData.map((item: any) => ({
-        id: item.id, // Ensure your backend sends this!
-        name: item.name,
-        lastMessage: item.lastMessage || "Started a conversation",
-        latestTimestamp: item.lastMessageTimestamp || new Date(),
-        opponentAvatar: item.avatar,
-        isPinned: item.isPinned || false,
-        isRead: item.isRead || false,
-      }));
-
-      // 3. Set state ONCE with the new array
-      setConversations(formattedData);
-    } catch (error) {
-      console.error("Failed to load chats", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 4. The Effect
-  // dependency array [] means "Run only once when component mounts"
-  useEffect(() => {
-    fetchConversationList();
-  }, []);
+  const { isLoading, currentUserConversationList } = useConversationList();
 
   // Optional: Filter logic if you want to separate Pinned/Normal visually
-  const pinned = conversations.filter((c) => c.isPinned);
-  const normal = conversations.filter((c) => !c.isPinned);
+  const pinned = currentUserConversationList.filter((c) => c.isPinned);
+  const normal = currentUserConversationList.filter((c) => !c.isPinned);
 
   if (isLoading) {
     return (
@@ -99,10 +53,10 @@ function ConversationList() {
             <ConversationItem
               key={data.id} // distinct key is required
               lastMessage={data.lastMessage}
-              name={data.name}
-              opponentAvatar={data.opponentAvatar || ""}
+              name={data.name ?? ""}
+              opponentAvatar={data.avatar || ""}
               isPinned={data.isPinned}
-              latestTimestamp={data.latestTimestamp}
+              latestTimestamp={data.lastMessageTime}
               isRead={data.isRead}
               onClick={() => {
                 router.navigate({
@@ -120,10 +74,10 @@ function ConversationList() {
         <ConversationItem
           key={data.id}
           lastMessage={data.lastMessage}
-          name={data.name}
-          opponentAvatar={data.opponentAvatar || ""}
+          name={data.name ?? ""}
+          opponentAvatar={data.avatar || ""}
           isPinned={data.isPinned}
-          latestTimestamp={data.latestTimestamp}
+          latestTimestamp={data.lastMessageTime}
           isRead={data.isRead}
           onClick={() => {
             router.navigate({
@@ -134,7 +88,7 @@ function ConversationList() {
         />
       ))}
 
-      {conversations.length === 0 && (
+      {currentUserConversationList.length === 0 && (
         <div className="p-8 text-center text-muted-foreground">
           No conversations yet
         </div>

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, Search, User, Loader2 } from "lucide-react"; // Added Loader2 for better UX
 import { router } from "@/routes";
-import { ROUTES } from "@/types";
+import { ConversationDto, ROUTES } from "@/types";
 import { apiGet } from "@/lib/api";
 
 interface UserI {
@@ -80,10 +80,7 @@ function NewConversationSheet({
     setIsCheckingConv(user.id); // Show spinner on the specific user
 
     try {
-      // 1. Ask backend: "Does a chat exist between me and this user?"
-      // Ideally, your backend supports: GET /conversations/find?userId=XYZ
-      const existingConv: any = await apiGet(`/conversation/${user.id}`);
-
+      const existingConv = await apiGet<ConversationDto>(`/conversation/users/${user.id}`);
       onClose(); // Close sheet before navigating
 
       if (existingConv && existingConv.id) {
