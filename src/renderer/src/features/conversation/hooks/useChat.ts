@@ -6,33 +6,31 @@ import {
   UIMessage,
   MessageDto,
   ConversationDto,
-  presence_status,
   ROUTES,
-} from "@/types"; // Import UIMessage!
+  MessageModel,
+} from "@/types";
 import { useAuthStore } from "@/stores/authStore";
 import { router } from "@/routes";
 
 interface ChatSearchParams {
   recipientId?: string;
 }
+
 type SingleDtoItem = MessageDto["data"][number];
+
 export function useChat(conversationId: string) {
   const { user } = useAuthStore();
 
   const [messages, setMessages] = useState<UIMessage[]>([]);
-  const [conversation, setConversation] = useState<ConversationModel | null>(
-    null,
-  );
+  const [conversation, setConversation] = useState<ConversationModel | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const searchParams = useSearch({ strict: false }) as ChatSearchParams;
   const draftRecipientId = searchParams.recipientId;
   const scrollToBottomRef = useRef<HTMLDivElement>(null);
 
-  // ----------------------------------------------------------------
-  // ⚡ HELPER: The "Bridge" from Raw Data to UI Data
-  // ----------------------------------------------------------------
-  const mapToUIMessage = (raw: SingleDtoItem): UIMessage => {
+  // Map backend message to UI message
+  const mapToUIMessage = (raw: SingleDtoItem | MessageModel): UIMessage => {
     return {
       id: raw.id,
       content: raw.content,
@@ -45,26 +43,7 @@ export function useChat(conversationId: string) {
     };
   };
 
-  const mapConversationDtoToConversationModel = (
-    raw: ConversationDto,
-  ): ConversationModel => {
-    return {
-      lastMessage: raw.lastMessage,
-      avatar: raw.avatar,
-      id: raw.id,
-      isPinned: false,
-      isRead: false,
-      lastMessageTime: raw.lastMessageTimestamp,
-      participants: raw.participants,
-      name: raw.name,
-      status: presence_status.NONE,
-      unreadMessageAmount: 0,
-    };
-  };
-
-  // ----------------------------------------------------------------
-  // 1. INIT LOAD
-  // ----------------------------------------------------------------
+  // Initial load - skip for new conversations
   useEffect(() => {
     if (!conversationId || conversationId === "new") {
       setIsLoading(false);
@@ -76,7 +55,7 @@ export function useChat(conversationId: string) {
       try {
         const [msgsData, convData] = await Promise.all([
           apiGet<MessageDto>(`/messages/${conversationId}`),
-          apiGet<ConversationModel>(`/conversation/${conversationId}`),
+          apiGet<ConversationModel>(`/conversations/${conversationId}`),
         ]);
 
         if (msgsData.data.length > 0) {
@@ -91,14 +70,14 @@ export function useChat(conversationId: string) {
     };
 
     initChat();
-  }, [conversationId, user?.id]); // Add user.id as dependency so isMine recalculates if user changes
+  }, [conversationId, user?.id]);
 
-  // ----------------------------------------------------------------
-  // 2. WEBSOCKET
-  // ----------------------------------------------------------------
+  // WebSocket subscriptions - skip for new conversations
   useEffect(() => {
+    if (conversationId === "new") return;
+
     const unsubscribeNew = ws.subscribe("NEW_MESSAGE", (payload) => {
-      const rawMsg = payload.message as unknown as SingleDtoItem;
+      const rawMsg = payload.message as MessageModel;
 
       if (rawMsg.conversationId === conversationId) {
         const uiMsg = mapToUIMessage(rawMsg);
@@ -109,8 +88,7 @@ export function useChat(conversationId: string) {
         });
 
         setTimeout(
-          () =>
-            scrollToBottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+          () => scrollToBottomRef.current?.scrollIntoView({ behavior: "smooth" }),
           100,
         );
       }
@@ -134,14 +112,10 @@ export function useChat(conversationId: string) {
     };
   }, [conversationId, user?.id]);
 
-  // ----------------------------------------------------------------
-  // 3. SEND MESSAGE (The "Draft -> Real" Fix)
-  // ----------------------------------------------------------------
+  // Send message function
   const sendMessage = async (content: string) => {
     if (!user?.id) return;
 
-    // 1. Identify Recipient
-    // If it's a new draft, we use the URL param. If it's real, we find the "other" participant.
     const targetUserId =
       conversationId === "new"
         ? draftRecipientId
@@ -154,23 +128,17 @@ export function useChat(conversationId: string) {
 
     const tempId = Date.now().toString();
 
-    // 2. Optimistic Update (Show message instantly)
+    // Optimistic UI update
     const optimisticMsg: UIMessage = {
       id: tempId,
       content: { content: content, type: "text" },
       createdAt: new Date().toISOString(),
-      isPinned: false,
-      isRead: true,
-      participants: [user.id, targetUserId], // Add if your model requires it
-
       senderId: user.id,
       isMine: true,
       conversationId: conversationId,
       reaction: [],
       status: "sending",
-      senderName: user.name || "Me",
-      senderAvatar: user.avatar || undefined,
-    } as unknown as UIMessage;
+    } as UIMessage;
 
     setMessages((prev) => [...prev, optimisticMsg]);
     setTimeout(
@@ -180,8 +148,7 @@ export function useChat(conversationId: string) {
 
     try {
       if (conversationId === "new") {
-        // CASE A: NEW CONVERSATION (HTTP)
-        const res = await apiPost<ConversationDto>("/conversation", {
+        const res = await apiPost<ConversationDto>("/conversations", {
           recipientId: targetUserId,
           content,
           participants: [user.id, targetUserId],
@@ -190,15 +157,22 @@ export function useChat(conversationId: string) {
         });
 
         if (res && res.id) {
+          // Navigate to the real conversation
           await router.navigate({
             to: `${ROUTES.CONVERSATION}/$conversationId`,
             params: { conversationId: res.id },
-            replace: true, // Replaces "new" in history so Back button works naturally
+            replace: true,
           });
-          return res.id;
+          
+          // Update local state
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === tempId ? { ...m, status: "sent", id: res.id } : m
+            )
+          );
         }
       } else {
-        // CASE B: EXISTING CONVERSATION (WebSocket)
+        // EXISTING CONVERSATION: Send via WebSocket
         ws.send("SEND_MESSAGE", {
           conversationId,
           content,
@@ -208,7 +182,6 @@ export function useChat(conversationId: string) {
       }
     } catch (e) {
       console.error("Send failed", e);
-      // Mark message as failed in UI
       setMessages((prev) =>
         prev.map((m) => (m.id === tempId ? { ...m, status: "failed" } : m)),
       );
@@ -216,7 +189,7 @@ export function useChat(conversationId: string) {
   };
 
   const deleteConversation = async (conversationId: string) => {
-    const res = await apiDelete<boolean>(`/conversation/${conversationId}`);
+    const res = await apiDelete<boolean>(`/conversations/${conversationId}`);
     if (res) {
       setConversation(null);
       router.navigate({ to: ROUTES.HOME });

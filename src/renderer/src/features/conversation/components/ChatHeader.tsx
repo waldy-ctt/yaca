@@ -7,48 +7,49 @@ import { router } from "@/routes";
 import { getInitials } from "@/lib/utils";
 import { apiGet, ws } from "@/lib/api";
 import { useEffect, useState } from "react";
-import { presence_status, UserDto } from "@/types";
+import { presence_status, UserDto, UserModel } from "@/types";
 
 interface ChatHeaderProps {
-  conversationId?: string;
-  userTargetId?: string;
+  conversationId: string;
+  recipientId?: string; // For draft conversations
 }
 
-// Simple type for what we need in the header
 interface ConversationHeaderInfo {
   name: string;
   avatar: string | null;
-  status: string; // "online" | "offline" | etc.
+  status: string;
 }
 
-export function ChatHeader({ conversationId, userTargetId }: ChatHeaderProps) {
+export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
   const [info, setInfo] = useState<ConversationHeaderInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTyping, setIsTyping] = useState<boolean>(false);
+
+  const isDraft = conversationId === "new";
 
   useEffect(() => {
     const fetchInfo = async () => {
       setIsLoading(true);
       try {
-        if (conversationId) {
+        if (isDraft && recipientId) {
+          const userData = await apiGet<UserModel>(`/users/${recipientId}`);
+
+          setInfo({
+            name: userData.name || "User",
+            avatar: userData.avatar,
+            status: userData.status || presence_status.OFFLINE,
+          });
+        } else if (!isDraft) {
           const data = await apiGet<{
             name: string;
             avatar: string | null;
             status?: string;
-          }>(`/conversation/${conversationId}`);
+          }>(`/conversations/${conversationId}`);
 
           setInfo({
             name: data.name || "Chat",
             avatar: data.avatar || null,
-            status: data.status || "offline", // fallback if not provided yet
-          });
-        } else {
-          const data = await apiGet<UserDto>(`/users/${userTargetId}`);
-
-          setInfo({
-            name: data.data.name ?? "",
-            avatar: null,
-            status: presence_status.NONE,
+            status: data.status || "offline",
           });
         }
       } catch (err) {
@@ -60,17 +61,15 @@ export function ChatHeader({ conversationId, userTargetId }: ChatHeaderProps) {
     };
 
     fetchInfo();
-  }, [conversationId, userTargetId]);
+  }, [conversationId, recipientId, isDraft]);
 
   useEffect(() => {
+    // Only subscribe to typing events for real conversations
+    if (isDraft) return;
+
     const unsubscribe = ws.subscribe("USER_TYPING", (payload) => {
-      // payload is { from: userId } or whatever backend sends
-      // For now: any typing event in this conversation = show indicator
-      // (Backend can filter by conversationId server-side)
       if (payload.conversationId === conversationId) {
         setIsTyping(true);
-
-        // Auto-hide after 2s of silence
         const timeout = setTimeout(() => setIsTyping(false), 2000);
         return () => clearTimeout(timeout);
       }
@@ -79,9 +78,8 @@ export function ChatHeader({ conversationId, userTargetId }: ChatHeaderProps) {
     return () => {
       unsubscribe();
     };
-  }, [conversationId]);
+  }, [conversationId, isDraft]);
 
-  // Fallback while loading
   const name = info?.name || "Loading...";
   const avatar = info?.avatar;
   const status = info?.status || "offline";
@@ -89,7 +87,6 @@ export function ChatHeader({ conversationId, userTargetId }: ChatHeaderProps) {
   return (
     <header className="h-16 border-b flex items-center px-4 justify-between bg-card/80 backdrop-blur-sm sticky top-0 z-10 shrink-0">
       <div className="flex items-center gap-3">
-        {/* Back Button */}
         <Button
           variant="ghost"
           size="icon"
@@ -99,7 +96,6 @@ export function ChatHeader({ conversationId, userTargetId }: ChatHeaderProps) {
           <ArrowLeft className="w-5 h-5 text-muted-foreground" />
         </Button>
 
-        {/* User Info */}
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10 border border-border">
             <AvatarImage src={avatar || ""} className="object-cover" />
@@ -123,7 +119,6 @@ export function ChatHeader({ conversationId, userTargetId }: ChatHeaderProps) {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
           <Phone className="w-5 h-5 text-muted-foreground" />

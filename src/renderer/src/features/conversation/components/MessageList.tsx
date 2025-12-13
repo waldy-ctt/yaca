@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { MessageItem } from "./MessageItem";
-import { UIMessage, MessageModel } from "@/types";
+import { UIMessage, MessageModel, MessageDto } from "@/types";
 import { ws } from "@/lib/api";
 import { apiGet } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
@@ -27,13 +27,13 @@ export function MessageList({ conversationId }: MessageListProps) {
   // 1. Initial fetch
   useEffect(() => {
     const fetchMessages = async () => {
+      if (conversationId === "new") return;
       setIsLoading(true);
       try {
-        const data = await apiGet<MessageModel[]>(
-          `/message/conversation/${conversationId}?limit=50`,
-        );
-        // Backend likely newest first → reverse to chronological
-        setMessages(data.reverse().map(enrichMessage));
+        const data = await apiGet<MessageDto>(
+          `/messages/conversation/${conversationId}?limit=50`,
+        ).then();
+        setMessages(data.data.reverse().map(enrichMessage));
       } catch (err) {
         console.error("Failed to load messages:", err);
       } finally {

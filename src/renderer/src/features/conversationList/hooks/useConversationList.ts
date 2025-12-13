@@ -37,7 +37,7 @@ export function useConversationList() {
       setIsLoading(true);
       try {
         const data = await apiGet<ConversationDto[]>(
-          `/conversation/user/${user.id}`,
+          `/conversations/user/${user.id}`,
         );
         setConversations(data.map(mapToModel));
         // Reset unread on fresh load (simple & safe)
@@ -80,7 +80,7 @@ export function useConversationList() {
         const refetch = async () => {
           try {
             const data = await apiGet<ConversationDto[]>(
-              `/conversation/user/${user.id}`,
+              `/conversations/user/${user.id}`,
             );
             setConversations(data.map(mapToModel));
             setUnreadCounts({}); // reset on full refresh
@@ -106,10 +106,10 @@ export function useConversationList() {
 
   // ← NEW: Function to mark a conversation as read
   const markAsRead = (conversationId: string) => {
-    setUnreadCounts((prev) => ({
-      ...prev,
-      [conversationId]: 0,
-    }));
+    // setUnreadCounts((prev) => ({
+    //   ...prev,
+    //   [conversationId]: 0,
+    // }));
   };
 
   return {

@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Search, User, Loader2 } from "lucide-react"; // Added Loader2 for better UX
+import { X, Search, User } from "lucide-react";
 import { router } from "@/routes";
-import { ConversationDto, ROUTES } from "@/types";
-import { apiGet, apiPost } from "@/lib/api";
+import { ROUTES } from "@/types";
+import { apiGet } from "@/lib/api";
 
 interface UserI {
   id: string;
@@ -17,21 +17,16 @@ interface UserI {
 interface NewConversationSheetProps {
   isOpen: boolean;
   onClose: () => void;
-  onUserSelect?: (user: UserI) => void;
 }
 
 function NewConversationSheet({
   isOpen,
   onClose,
-  onUserSelect,
 }: NewConversationSheetProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [users, setUsers] = useState<UserI[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserI[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  // New state to show loading specifically when clicking a user
-  const [isCheckingConv, setIsCheckingConv] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) fetchUsers();
@@ -55,7 +50,6 @@ function NewConversationSheet({
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      // Cleaned up the fetching logic
       const response: any = await apiGet("/users?limit=20");
       if (response && response.data) {
         setUsers(response.data);
@@ -68,45 +62,12 @@ function NewConversationSheet({
     }
   };
 
-  // -----------------------------------------------------------------------
-  // ⚡ THE NEW LOGIC
-  // -----------------------------------------------------------------------
-  const handleUserClick = async (user: UserI) => {
-    setIsCheckingConv(user.id);
-
-    try {
-      const existing = await apiGet<ConversationDto>(
-        `/conversations/users/${user.id}`,
-      );
-
-      let conversationId: string;
-
-      if (existing?.id) {
-        conversationId = existing.id;
-      } else {
-        const created = await apiPost<ConversationDto>("/conversations", {
-          participantIds: [user.id], // backend expects array of other participants
-        });
-        conversationId = created.id;
-      }
-
-      // 3. Navigate to the real conversation
-      onClose();
-      router.navigate({
-        to: `${ROUTES.CONVERSATION}/$conversationId`,
-        params: { conversationId },
-      });
-    } catch (error) {
-      console.error("Failed to create/open conversation:", error);
-      // Fallback: still try to go to a draft (better than stuck sheet)
-      onClose();
-      router.navigate({
-        to: `${ROUTES.CONVERSATION}/new`,
-        search: { recipientId: user.id },
-      });
-    } finally {
-      setIsCheckingConv(null);
-    }
+  const handleUserClick = (user: UserI) => {
+    onClose();
+    router.navigate({
+      to: `${ROUTES.CONVERSATION}/new`,
+      search: { recipientId: user.id },
+    });
   };
 
   if (!isOpen) return null;
@@ -179,11 +140,6 @@ function NewConversationSheet({
                     @{user.username}
                   </p>
                 </div>
-
-                {/* Loading Spinner for specific user click */}
-                {isCheckingConv === user.id && (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                )}
               </div>
             ))
           )}

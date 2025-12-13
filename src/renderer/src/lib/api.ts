@@ -80,9 +80,9 @@ export interface WebSocketEventMap {
 
 export interface WebSocketEmitMap {
   SEND_MESSAGE: {
-    conversationId: string;
-    content: string;
-    toUserId: string;
+    content: { data: string; type: "text" | "image" };
+    destinationId: string;
+    destinationType: "conversation" | "user";
     tempId: string;
   };
   EDIT_MESSAGE: { messageId: string; newContent: string; toUserId: string };
