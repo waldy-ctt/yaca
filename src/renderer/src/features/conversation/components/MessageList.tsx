@@ -1,4 +1,4 @@
-// src/features/conversation/components/MessageList.tsx
+// src/renderer/src/features/conversation/components/MessageList.tsx
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { MessageItem } from "./MessageItem";
@@ -27,22 +27,21 @@ export function MessageList({
     status: "sent" as const,
   });
 
-  // Function to add optimistic message
+  // ✅ Function to add optimistic message
   const addOptimisticMessage = useCallback((msg: UIMessage) => {
-    console.log("HEHEHEE");
     setMessages((prev) => [...prev, msg]);
     setTimeout(
       () => scrollRef.current?.scrollIntoView({ behavior: "smooth" }),
       10,
     );
-  }, []);
+  }, []); // Empty deps - function never changes
 
-  // Expose the handler to parent (ConversationScreen)
+  // ✅ Expose the handler to parent IMMEDIATELY
   useEffect(() => {
     if (onOptimisticMessageHandler) {
       onOptimisticMessageHandler(addOptimisticMessage);
     }
-  }, [addOptimisticMessage, onOptimisticMessageHandler]);
+  }, [onOptimisticMessageHandler, addOptimisticMessage]);
 
   // Initial fetch
   useEffect(() => {
@@ -68,9 +67,9 @@ export function MessageList({
     fetchMessages();
   }, [conversationId]);
 
+  // ✅ WebSocket: ACK handler
   useEffect(() => {
     const unsubscribe = ws.subscribe("ACK", ({ tempId, message }) => {
-      console.log("I GOT ACK", tempId, message);
       setMessages((prev) =>
         prev.map((m) =>
           m.id === tempId
@@ -80,10 +79,8 @@ export function MessageList({
       );
     });
 
-    return () => {
-      unsubscribe;
-    };
-  }, []);
+    return unsubscribe; // ✅ Fixed: was missing parentheses
+  }, [user?.id]);
 
   // WebSocket: NEW_MESSAGE from others
   useEffect(() => {
@@ -92,18 +89,15 @@ export function MessageList({
     const unsubscribe = ws.subscribe("NEW_MESSAGE", (payload) => {
       const msg = payload.message;
 
-      // Only add if it's for THIS conversation
       if (msg.conversationId !== conversationId) return;
 
       setMessages((prev) => {
-        // Prevent duplicates
         if (prev.some((m) => m.id === msg.id)) return prev;
-
         return [...prev, enrichMessage(msg)];
       });
     });
 
-    return () => unsubscribe();
+    return unsubscribe;
   }, [conversationId, user?.id]);
 
   // WebSocket: READ event

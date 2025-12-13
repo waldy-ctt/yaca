@@ -14,7 +14,7 @@ interface ChatInputProps {
   recipientId?: string;
   disabled?: boolean;
   placeholder?: string;
-  onOptimisticMessage?: (message: UIMessage) => void; 
+  onOptimisticMessage?: (message: UIMessage) => void;
 }
 
 export function ChatInput({
@@ -77,7 +77,7 @@ export function ChatInput({
         }
       } else {
         // REAL CONVERSATION: Optimistic update + WebSocket
-        
+
         // 1. Create optimistic message
         const optimisticMsg: UIMessage = {
           id: tempId,
@@ -87,23 +87,21 @@ export function ChatInput({
           createdAt: new Date().toISOString(),
           reaction: [],
           isMine: true,
-          status: "sending", // Show as "sending"
+          status: "sending",
         };
 
         // 2. Add to UI immediately
-        console.log("ASDAS: ", onOptimisticMessage);
         if (onOptimisticMessage) {
-          console.log("HEREAAA")
           onOptimisticMessage(optimisticMsg);
         }
 
         // 3. Clear input
         setMessage("");
 
-        // 4. Send via WebSocket
+        // 4. Send via WebSocket - ✅ FIXED PAYLOAD
         ws.send("SEND_MESSAGE", {
           content: {
-            data: trimmed,
+            data: trimmed, // ✅ Correct structure
             type: "text",
           },
           destinationId: conversationId,

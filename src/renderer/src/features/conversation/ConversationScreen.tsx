@@ -1,9 +1,11 @@
+// src/renderer/src/features/conversation/ConversationScreen.tsx
+
 import { useParams, useSearch } from "@tanstack/react-router";
 import { ChatHeader } from "./components/ChatHeader";
 import { MessageList } from "./components/MessageList";
 import { ChatInput } from "./components/ChatInput";
 import { useConversationList } from "../conversationList/hooks/useConversationList";
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { ws } from "@/lib/api";
 import { UIMessage } from "@/types";
 
@@ -14,10 +16,8 @@ function ConversationScreen() {
   const searchParams = useSearch({ strict: false }) as { recipientId?: string };
   const { markAsRead } = useConversationList();
   
-  // State to hold the optimistic message handler
-  const [addOptimisticMessage, setAddOptimisticMessage] = useState<
-    ((msg: UIMessage) => void) | null
-  >(null);
+  // ✅ Use ref instead of state to store the callback
+  const addOptimisticMessageRef = useRef<((msg: UIMessage) => void) | null>(null);
 
   useEffect(() => {
     if (!conversationId || conversationId === "new") return;
@@ -35,13 +35,15 @@ function ConversationScreen() {
       
       <MessageList
         conversationId={conversationId}
-        onOptimisticMessageHandler={setAddOptimisticMessage}
+        onOptimisticMessageHandler={(handler) => {
+          addOptimisticMessageRef.current = handler;
+        }}
       />
       
       <ChatInput
         conversationId={conversationId}
         recipientId={recipientId}
-        onOptimisticMessage={addOptimisticMessage || undefined}
+        onOptimisticMessage={addOptimisticMessageRef.current || undefined}
       />
     </div>
   );
