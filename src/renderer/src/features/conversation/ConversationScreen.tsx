@@ -5,6 +5,8 @@ import { ChatInput } from "./components/ChatInput";
 import { useConversationList } from "../conversationList/hooks/useConversationList";
 import { useEffect } from "react";
 import { ws } from "@/lib/api";
+import { router } from "@/routes";
+import { ROUTES } from "@/types";
 
 function ConversationScreen() {
   const { conversationId } = useParams({
@@ -22,9 +24,9 @@ function ConversationScreen() {
 
   // Now conversationId is ALWAYS defined and real
   if (!conversationId || conversationId === "new") {
-    // Safety net — should never happen now
     return (
       <div className="p-8 text-center text-muted-foreground">
+        <button onClick={() => router.navigate({to: ROUTES.HOME})}>q</button>
         Invalid conversation
       </div>
     );
@@ -33,7 +35,7 @@ function ConversationScreen() {
   // Pass conversationId directly to hooks/components
   return (
     <div className="flex flex-col h-full">
-      <ChatHeader conversationId={conversationId} />
+      <ChatHeader conversationId={conversationId, } />
       <MessageList conversationId={conversationId} />
       <ChatInput conversationId={conversationId} />
     </div>

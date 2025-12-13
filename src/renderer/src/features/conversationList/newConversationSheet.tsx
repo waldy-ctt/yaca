@@ -75,19 +75,16 @@ function NewConversationSheet({
     setIsCheckingConv(user.id);
 
     try {
-      // 1. Check if conversation already exists
       const existing = await apiGet<ConversationDto>(
-        `/conversation/users/${user.id}`,
+        `/conversations/users/${user.id}`,
       );
 
       let conversationId: string;
 
       if (existing?.id) {
-        // Already exists → go straight there
         conversationId = existing.id;
       } else {
-        // 2. Create new one
-        const created = await apiPost<ConversationDto>("/conversation", {
+        const created = await apiPost<ConversationDto>("/conversations", {
           participantIds: [user.id], // backend expects array of other participants
         });
         conversationId = created.id;

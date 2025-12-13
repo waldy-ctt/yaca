@@ -7,9 +7,11 @@ import { router } from "@/routes";
 import { getInitials } from "@/lib/utils";
 import { apiGet, ws } from "@/lib/api";
 import { useEffect, useState } from "react";
+import { presence_status, UserDto } from "@/types";
 
 interface ChatHeaderProps {
-  conversationId: string;
+  conversationId?: string;
+  userTargetId?: string;
 }
 
 // Simple type for what we need in the header
@@ -19,30 +21,36 @@ interface ConversationHeaderInfo {
   status: string; // "online" | "offline" | etc.
 }
 
-export function ChatHeader({ conversationId }: ChatHeaderProps) {
+export function ChatHeader({ conversationId, userTargetId }: ChatHeaderProps) {
   const [info, setInfo] = useState<ConversationHeaderInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTyping, setIsTyping] = useState<boolean>(false);
 
-  // Fetch conversation details (name, avatar, opponent status)
   useEffect(() => {
     const fetchInfo = async () => {
       setIsLoading(true);
       try {
-        // Adjust endpoint to match your backend
-        const data = await apiGet<{
-          name: string;
-          avatar: string | null;
-          // Add status if backend provides it
-          status?: string;
-          // participants array if you need to derive opponent
-        }>(`/conversation/${conversationId}`);
+        if (conversationId) {
+          const data = await apiGet<{
+            name: string;
+            avatar: string | null;
+            status?: string;
+          }>(`/conversation/${conversationId}`);
 
-        setInfo({
-          name: data.name || "Chat",
-          avatar: data.avatar || null,
-          status: data.status || "offline", // fallback if not provided yet
-        });
+          setInfo({
+            name: data.name || "Chat",
+            avatar: data.avatar || null,
+            status: data.status || "offline", // fallback if not provided yet
+          });
+        } else {
+          const data = await apiGet<UserDto>(`/users/${userTargetId}`);
+
+          setInfo({
+            name: data.data.name ?? "",
+            avatar: null,
+            status: presence_status.NONE,
+          });
+        }
       } catch (err) {
         console.error("Failed to load conversation header info:", err);
         setInfo({ name: "Chat", avatar: null, status: "offline" });
@@ -52,7 +60,7 @@ export function ChatHeader({ conversationId }: ChatHeaderProps) {
     };
 
     fetchInfo();
-  }, [conversationId]);
+  }, [conversationId, userTargetId]);
 
   useEffect(() => {
     const unsubscribe = ws.subscribe("USER_TYPING", (payload) => {

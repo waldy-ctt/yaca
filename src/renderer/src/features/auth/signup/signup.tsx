@@ -88,7 +88,7 @@ function SignupScreen() {
       password: password,
       name: name,
       username: generateRandomUsername(), // NOTE: If want, make use input, otherwise move to BE
-      tel: "",
+      tel: "11",
     });
 
     login(

@@ -34,7 +34,7 @@ export default function ConversationListScreen() {
     <div className="flex h-screen bg-background">
       {/* Left: Conversation List */}
       <div className="w-96 border-r border-border flex flex-col">
-        <ConversationList />  {/* ← actual list component */}
+        <ConversationList />  
       </div>
 
       {/* Right: Chat or Placeholder */}
