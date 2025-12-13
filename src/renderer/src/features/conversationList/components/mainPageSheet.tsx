@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { User, Settings, Info, LogOut, Languages, SunMoon } from "lucide-react";
-import UserInfo from "./userInfo";
+import UserInfo from "./UserInfo";
 import { ROUTES } from "@/types";
 import { useAuthStore } from "@/stores/authStore";
 import { router } from "@/routes";

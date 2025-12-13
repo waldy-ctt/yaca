@@ -4,16 +4,19 @@ import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn, getInitials } from "@/lib/utils";
 import { Pin, Image as ImageIcon } from "lucide-react";
+import { presence_status } from "@/types";
 
 interface ConversationProps {
   name: string;
   lastMessage: string;
   isPinned: boolean;
-  // isRead: boolean;  ← REMOVE this line
   latestTimestamp: string | Date;
   opponentAvatar: string | null;
   unreadCount?: number;
   onClick?: () => void;
+  // ✅ NEW: Props for status
+  participantCount?: number;
+  opponentStatus?: presence_status;
 }
 
 export function ConversationItem({
@@ -22,23 +25,29 @@ export function ConversationItem({
   isPinned,
   latestTimestamp,
   opponentAvatar,
-  unreadCount = 0,       // default 0
+  unreadCount = 0,
   onClick,
+  participantCount = 2,
+  opponentStatus,
 }: ConversationProps) {
   
-  // Parse message preview (image detection)
+  // Parse message preview (handles both JSON and plain text)
   const messagePreview = useMemo(() => {
+    if (!lastMessage) return "No messages yet";
+    
     try {
       const parsed = JSON.parse(lastMessage);
+      
       if (parsed.type === "image") {
         return (
           <span className="flex items-center gap-1">
             <ImageIcon className="w-3 h-3" />
-            Sent an image
+            Image
           </span>
         );
       }
-      return parsed.content;
+      
+      return parsed.content || "Message";
     } catch {
       return lastMessage;
     }
@@ -46,6 +55,8 @@ export function ConversationItem({
 
   // Format time
   const formattedTime = (() => {
+    if (!latestTimestamp) return "";
+    
     const now = new Date();
     const messageDate = new Date(latestTimestamp);
 
@@ -61,10 +72,26 @@ export function ConversationItem({
         hour12: false,
       });
     }
-    return messageDate.toLocaleDateString("en-CA"); // YYYY-MM-DD
+    return messageDate.toLocaleDateString("en-CA");
   })();
 
   const hasUnread = unreadCount > 0;
+  const is1on1 = participantCount === 2;
+
+  // ✅ Get status indicator color
+  const getStatusColor = () => {
+    switch (opponentStatus) {
+      case presence_status.ONLINE:
+        return "bg-green-500";
+      case presence_status.SLEEP:
+        return "bg-yellow-500";
+      case presence_status.DND:
+        return "bg-red-500";
+      case presence_status.OFFLINE:
+      default:
+        return "bg-gray-400";
+    }
+  };
 
   return (
     <div
@@ -73,15 +100,25 @@ export function ConversationItem({
         "group flex w-full items-center gap-3 p-2.5 px-3 cursor-pointer",
         "hover:bg-accent/50 transition-colors",
         isPinned && "bg-muted/30",
-        hasUnread && "font-medium" // bold when unread
+        hasUnread && "font-medium"
       )}
     >
-      <Avatar className="h-12 w-12 shrink-0">
-        <AvatarImage src={opponentAvatar || ""} className="object-cover" />
-        <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600 text-white font-medium">
-          {getInitials(name)}
-        </AvatarFallback>
-      </Avatar>
+      {/* Avatar with Status Indicator */}
+      <div className="relative">
+        <Avatar className="h-12 w-12 shrink-0">
+          <AvatarImage src={opponentAvatar || ""} className="object-cover" />
+          <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600 text-white font-medium">
+            {getInitials(name)}
+          </AvatarFallback>
+        </Avatar>
+        
+        {/* ✅ Status Indicator - Only show for 1-on-1 chats */}
+        {is1on1 && (
+          <div className="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-background bg-background flex items-center justify-center">
+            <div className={cn("w-2.5 h-2.5 rounded-full", getStatusColor())} />
+          </div>
+        )}
+      </div>
 
       <div className="flex-1 min-w-0 flex flex-col justify-center h-full gap-0.5">
         <div className="flex justify-between items-baseline">

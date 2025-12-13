@@ -18,6 +18,7 @@ export default function App() {
 
     return () => ws.disconnect();
   }, [token]);
+
   return (
     <>
       <RouterProvider router={router} />
@@ -32,6 +33,17 @@ function AppInit() {
   useEffect(() => {
     setTheme(theme);
     setLanguage(language);
+  }, []);
+
+  // ✅ NEW: Listen for status changes from other users
+  useEffect(() => {
+    const unsubscribe = ws.subscribe("STATUS_CHANGE", (payload) => {
+      console.log(`User ${payload.userId} is now ${payload.status}`);
+      // You can update a global user cache here if needed
+      // For now, the conversation list will refresh when reopened
+    });
+
+    return unsubscribe;
   }, []);
 
   return null;

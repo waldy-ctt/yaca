@@ -34,7 +34,7 @@ export function MessageList({
       () => scrollRef.current?.scrollIntoView({ behavior: "smooth" }),
       10,
     );
-  }, []); // Empty deps - function never changes
+  }, []);
 
   // ✅ Expose the handler to parent IMMEDIATELY
   useEffect(() => {
@@ -67,7 +67,7 @@ export function MessageList({
     fetchMessages();
   }, [conversationId]);
 
-  // ✅ WebSocket: ACK handler
+  // ✅ WebSocket: ACK handler (for sender's optimistic UI)
   useEffect(() => {
     const unsubscribe = ws.subscribe("ACK", ({ tempId, message }) => {
       setMessages((prev) =>
@@ -79,28 +79,39 @@ export function MessageList({
       );
     });
 
-    return unsubscribe; // ✅ Fixed: was missing parentheses
+    return unsubscribe;
   }, [user?.id]);
 
-  // WebSocket: NEW_MESSAGE from others
+  // ✅ WebSocket: NEW_MESSAGE from others (FIXED - removed sender filter)
   useEffect(() => {
     if (conversationId === "new") return;
 
     const unsubscribe = ws.subscribe("NEW_MESSAGE", (payload) => {
       const msg = payload.message;
 
+      // Only filter by conversationId, NOT by sender
       if (msg.conversationId !== conversationId) return;
 
       setMessages((prev) => {
+        // Prevent duplicates
         if (prev.some((m) => m.id === msg.id)) return prev;
-        return [...prev, enrichMessage(msg)];
+        
+        const enrichedMsg = enrichMessage(msg);
+        
+        // Auto-scroll for new messages
+        setTimeout(
+          () => scrollRef.current?.scrollIntoView({ behavior: "smooth" }),
+          10,
+        );
+        
+        return [...prev, enrichedMsg];
       });
     });
 
     return unsubscribe;
   }, [conversationId, user?.id]);
 
-  // WebSocket: READ event
+  // ✅ WebSocket: READ event
   useEffect(() => {
     if (conversationId === "new") return;
 
@@ -117,7 +128,7 @@ export function MessageList({
     return unsubscribe;
   }, [conversationId, user?.id]);
 
-  // Auto-scroll
+  // Auto-scroll on new messages
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);

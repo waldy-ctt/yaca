@@ -1,7 +1,7 @@
 // src/renderer/src/features/conversationList/ConversationList.tsx
 
 import { router } from "@/routes";
-import ListHeader from "./components/ListHeader";  // ← correct header for list
+import ListHeader from "./components/ListHeader";
 import { ConversationItem } from "./components/conversationItem";
 import { useConversationList } from "./hooks/useConversationList";
 
@@ -18,7 +18,7 @@ export default function ConversationList() {
 
   return (
     <div className="flex flex-col h-full">
-      <ListHeader />  {/* ← no conversationId needed */}
+      <ListHeader />
 
       <div className="flex-1 overflow-y-auto">
         {conversations.length === 0 ? (
@@ -36,6 +36,8 @@ export default function ConversationList() {
               latestTimestamp={conv.lastMessageTime}
               opponentAvatar={conv.avatar}
               unreadCount={unreadCounts[conv.id] || 0}
+              participantCount={conv.participants?.length || 2}
+              opponentStatus={(conv as any).status}
               onClick={() =>
                 router.navigate({
                   to: "/conversation/$conversationId",

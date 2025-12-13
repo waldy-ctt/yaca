@@ -75,6 +75,7 @@ export interface WebSocketEventMap {
   MESSAGE_DELETED: { messageId: string };
   USER_TYPING: { conversationId: string };
   READ: { conversationId: string; readerId: string };
+  STATUS_CHANGE: { userId: string; status: "online" | "offline" | "sleep" | "dnd" }; // ✅ NEW
   ERROR: { error: string };
 }
 
@@ -114,12 +115,14 @@ class WebSocketService {
     this.socket = new WebSocket(url);
 
     this.socket.onopen = () => {
+      console.log("✅ WebSocket connected");
       if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     };
 
     this.socket.onmessage = (event) => {
       try {
         const { type, ...payload } = JSON.parse(event.data);
+        console.log("📨 WS Event:", type, payload);
         this.handlers.get(type)?.forEach((handler) => handler(payload));
       } catch {
         // ignore malformed messages
@@ -127,6 +130,7 @@ class WebSocketService {
     };
 
     this.socket.onclose = (event) => {
+      console.log("❌ WebSocket disconnected");
       if (this.isIntentionalClose) return;
 
       if (event.code === 4001 || event.code === 4003) {
