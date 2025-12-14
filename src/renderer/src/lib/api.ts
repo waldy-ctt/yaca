@@ -19,7 +19,12 @@ class ApiError extends Error {
   }
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_API_URL;
+
+if (!API_BASE) {
+  throw new Error("VITE_API_URL is missing! Check your .env files.");
+}
+
 const WS_BASE = API_BASE.replace(/^http/, "ws");
 
 export async function api<T>(
@@ -75,7 +80,10 @@ export interface WebSocketEventMap {
   MESSAGE_DELETED: { messageId: string };
   USER_TYPING: { conversationId: string };
   READ: { conversationId: string; readerId: string };
-  STATUS_CHANGE: { userId: string; status: "online" | "offline" | "sleep" | "dnd" }; // ✅ NEW
+  STATUS_CHANGE: {
+    userId: string;
+    status: "online" | "offline" | "sleep" | "dnd";
+  }; // ✅ NEW
   ERROR: { error: string };
 }
 

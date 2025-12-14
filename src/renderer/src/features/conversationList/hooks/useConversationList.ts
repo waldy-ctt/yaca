@@ -39,7 +39,10 @@ export function useConversationList() {
         );
         setConversations(data.map(mapToModel));
         setUnreadCounts({});
-        console.log("📋 [useConversationList] Loaded conversations:", data.length);
+        console.log(
+          "📋 [useConversationList] Loaded conversations:",
+          data.length,
+        );
       } catch (e) {
         console.error("Failed to load conversations", e);
       } finally {
@@ -54,21 +57,30 @@ export function useConversationList() {
   useEffect(() => {
     const unsubscribe = ws.subscribe("STATUS_CHANGE", (payload) => {
       const { userId, status } = payload;
-      
-      console.log(`📡 ConversationList received STATUS_CHANGE: User ${userId} is now ${status}`);
-      
+
+      console.log(
+        `📡 ConversationList received STATUS_CHANGE: User ${userId} is now ${status}`,
+      );
+
       setConversations((prev) =>
         prev.map((conv) => {
-          if (conv.participants.length === 2 && conv.participants.includes(userId)) {
-            console.log(`✅ Updating conversation ${conv.id} status to ${status}`);
+          if (
+            conv.participants.length === 2 &&
+            conv.participants.includes(userId)
+          ) {
+            console.log(
+              `✅ Updating conversation ${conv.id} status to ${status}`,
+            );
             return { ...conv, status: status as presence_status };
           }
           return conv;
-        })
+        }),
       );
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe;
+    };
   }, []);
 
   // Real-time: last message + unread count
@@ -116,7 +128,9 @@ export function useConversationList() {
         return prev;
       });
 
-      console.log(`   📊 Incrementing unread count for ${message.conversationId}`);
+      console.log(
+        `   📊 Incrementing unread count for ${message.conversationId}`,
+      );
       setUnreadCounts((prev) => {
         const newCount = (prev[message.conversationId] || 0) + 1;
         console.log(`   New unread count: ${newCount}`);
@@ -138,10 +152,10 @@ export function useConversationList() {
 
     const unsubscribe = ws.subscribe("READ", (payload) => {
       const { conversationId, readerId } = payload;
-      
+
       console.log(`📖 [useConversationList] READ event received:`, payload);
       console.log(`   Reader: ${readerId}, Current user: ${user.id}`);
-      
+
       // Only clear if current user read it
       if (readerId === user.id) {
         console.log(`   ✅ Clearing unread count for ${conversationId}`);
@@ -157,23 +171,28 @@ export function useConversationList() {
       }
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe;
+    };
   }, [user?.id]);
 
-  const markAsRead = useCallback((conversationId: string) => {
-    console.log(`✅ [markAsRead] Called for ${conversationId}`);
-    console.log(`   Current unread counts:`, unreadCounts);
-    
-    setUnreadCounts((prev) => {
-      const updated = { ...prev };
-      const oldCount = updated[conversationId];
-      delete updated[conversationId];
-      
-      console.log(`   Cleared unread count (was ${oldCount})`);
-      console.log(`   New unread counts:`, updated);
-      return updated;
-    });
-  }, [unreadCounts]);
+  const markAsRead = useCallback(
+    (conversationId: string) => {
+      console.log(`✅ [markAsRead] Called for ${conversationId}`);
+      console.log(`   Current unread counts:`, unreadCounts);
+
+      setUnreadCounts((prev) => {
+        const updated = { ...prev };
+        const oldCount = updated[conversationId];
+        delete updated[conversationId];
+
+        console.log(`   Cleared unread count (was ${oldCount})`);
+        console.log(`   New unread counts:`, updated);
+        return updated;
+      });
+    },
+    [unreadCounts],
+  );
 
   return {
     isLoading,

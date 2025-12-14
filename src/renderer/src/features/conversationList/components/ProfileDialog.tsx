@@ -15,6 +15,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { getInitials } from "@/lib/utils";
 import { apiPut } from "@/lib/api";
 import { Separator } from "@/components/ui/separator";
+import { UserModel } from "@/types";
 
 interface ProfileDialogProps {
   isOpen: boolean;
@@ -85,7 +86,7 @@ export function ProfileDialog({ isOpen, onClose }: ProfileDialogProps) {
 
     setIsSaving(true);
     try {
-      const updatedUser = await apiPut("/users/me", formData);
+      const updatedUser = await apiPut<UserModel>("/users/me", formData);
 
       updateUser({
         ...user,
@@ -97,6 +98,7 @@ export function ProfileDialog({ isOpen, onClose }: ProfileDialogProps) {
 
       setIsEditing(false);
       setErrors({});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       setErrors({ api: error.message || "Failed to update profile" });
     } finally {

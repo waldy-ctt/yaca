@@ -1,17 +1,50 @@
 {
   "name": "yaca",
+  "description": "Yet Another Chat App",
+  "author": "Waldy",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/waldy-ctt/yaca.git"
+  },
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc && vite build && electron-builder",
+    "build:desktop": "tsc && vite build && electron-builder",
+    "build:web": "tsc && vite build",
+    "release": "tsc && vite build && electron-builder --publish always",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "release:desktop": "tsc && vite build && electron-builder --publish always",
+    "sync:android": "npm run build && npx cap sync",
+    "open:android": "npx cap open android"
+  },
+  "build": {
+    "appId": "com.yaca.chat",
+    "productName": "YACA",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "YOUR_GITHUB_USERNAME",
+        "repo": "YOUR_REPO_NAME"
+      }
+    ],
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Utility"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "resources/icon.ico"
+    }
   },
   "dependencies": {
-    "@capacitor/android": "^7.4.4",
-    "@capacitor/core": "^7.4.4",
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.8",
@@ -32,7 +65,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@capacitor/cli": "^7.4.4",
+    "@capacitor/cli": "^8.0.0",
     "@tanstack/react-router": "^1.139.14",
     "@tanstack/router-plugin": "^1.139.14",
     "@types/react": "^18.2.64",

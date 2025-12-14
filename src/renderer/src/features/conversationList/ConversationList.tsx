@@ -4,17 +4,10 @@ import { router } from "@/routes";
 import ListHeader from "./components/ListHeader";
 import { ConversationItem } from "./components/conversationItem";
 import { useConversationList } from "./hooks/useConversationList";
-import { useMatch } from "@tanstack/react-router";
 
 export default function ConversationList() {
   const { isLoading, conversations, unreadCounts } = useConversationList();
   
-  // ✅ Get currently selected conversation
-  const conversationMatch = useMatch({
-    from: "/conversation/$conversationId",
-    shouldThrow: false,
-  });
-  const selectedConversationId = conversationMatch?.params.conversationId;
 
   if (isLoading) {
     return (
@@ -59,7 +52,6 @@ export default function ConversationList() {
               unreadCount={unreadCounts[conv.id] || 0}
               participantCount={conv.participants?.length || 2}
               opponentStatus={conv.status}
-              isSelected={conv.id === selectedConversationId} // ✅ NEW
               onClick={() =>
                 router.navigate({
                   to: "/conversation/$conversationId",

@@ -1,6 +1,6 @@
 // src/features/conversation/components/MessageItem.tsx
 
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { Check, CheckCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UIMessage } from "@/types";
@@ -18,11 +18,18 @@ export function MessageItem({ message, onClick }: MessageItemProps) {
 
   // ✅ Group reactions by type
   const groupedReactions = useMemo(() => {
-    const groups = new Map<string, { count: number; hasUserReacted: boolean; emoji: string }>();
+    const groups = new Map<
+      string,
+      { count: number; hasUserReacted: boolean; emoji: string }
+    >();
 
     message.reaction?.forEach((r) => {
-      const existing = groups.get(r.type) || { count: 0, hasUserReacted: false, emoji: "" };
-      
+      const existing = groups.get(r.type) || {
+        count: 0,
+        hasUserReacted: false,
+        emoji: "",
+      };
+
       existing.count++;
       if (r.sender === user?.id) {
         existing.hasUserReacted = true;
@@ -73,11 +80,13 @@ export function MessageItem({ message, onClick }: MessageItemProps) {
     >
       <div className="relative max-w-[75%] cursor-pointer group">
         {/* MESSAGE BUBBLE */}
-        <div className={cn(
-          "rounded-2xl px-3 py-2 shadow-sm transition-all",
-          "group-hover:shadow-md group-active:scale-[0.98]",
-          bubbleColor
-        )}>
+        <div
+          className={cn(
+            "rounded-2xl px-3 py-2 shadow-sm transition-all",
+            "group-hover:shadow-md group-active:scale-[0.98]",
+            bubbleColor,
+          )}
+        >
           {/* SENDER NAME (in group chats) */}
           {!isMine && message.senderName && (
             <p className="text-xs font-semibold mb-1 opacity-80">
@@ -92,12 +101,12 @@ export function MessageItem({ message, onClick }: MessageItemProps) {
 
           {/* FOOTER: Time + Status */}
           <div className="flex items-center justify-end gap-1 mt-1 opacity-70">
-            <span className="text-[10px]">
-              {formatTime(message.createdAt)}
-            </span>
+            <span className="text-[10px]">{formatTime(message.createdAt)}</span>
 
             {isMine && (
-              <span className={cn(message.status === "read" ? "text-blue-500" : "")}>
+              <span
+                className={cn(message.status === "read" ? "text-blue-500" : "")}
+              >
                 {getStatusIcon()}
               </span>
             )}
@@ -113,9 +122,9 @@ export function MessageItem({ message, onClick }: MessageItemProps) {
                 className={cn(
                   "text-xs px-2 py-0.5 rounded-full border flex items-center gap-1",
                   "bg-background/90 backdrop-blur-sm shadow-sm",
-                  data.hasUserReacted 
-                    ? "border-primary/50 ring-1 ring-primary/20" 
-                    : "border-border"
+                  data.hasUserReacted
+                    ? "border-primary/50 ring-1 ring-primary/20"
+                    : "border-border",
                 )}
               >
                 <span>{data.emoji}</span>

@@ -22,7 +22,9 @@ export function useChat(conversationId: string) {
   const { user } = useAuthStore();
 
   const [messages, setMessages] = useState<UIMessage[]>([]);
-  const [conversation, setConversation] = useState<ConversationModel | null>(null);
+  const [conversation, setConversation] = useState<ConversationModel | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   const searchParams = useSearch({ strict: false }) as ChatSearchParams;
@@ -88,7 +90,8 @@ export function useChat(conversationId: string) {
         });
 
         setTimeout(
-          () => scrollToBottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+          () =>
+            scrollToBottomRef.current?.scrollIntoView({ behavior: "smooth" }),
           100,
         );
       }
@@ -163,20 +166,20 @@ export function useChat(conversationId: string) {
             params: { conversationId: res.id },
             replace: true,
           });
-          
+
           // Update local state
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === tempId ? { ...m, status: "sent", id: res.id } : m
-            )
+              m.id === tempId ? { ...m, status: "sent", id: res.id } : m,
+            ),
           );
         }
       } else {
         // EXISTING CONVERSATION: Send via WebSocket
         ws.send("SEND_MESSAGE", {
-          conversationId,
-          content,
-          toUserId: targetUserId,
+          destinationId: conversationId,
+          content: { data: content, type: "text" },
+          destinationType: 'conversation',
           tempId,
         });
       }

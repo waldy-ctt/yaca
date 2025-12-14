@@ -60,12 +60,12 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
             status?: presence_status;
             participants: string[];
           }>(`/conversations/${conversationId}`);
-          
+
           console.log("📱 Real conversation - Fetched data:", data);
 
           // ✅ FIX: Find the opponent's ID correctly
-          const opponentId = data.participants?.find(id => id !== user?.id);
-          
+          const opponentId = data.participants?.find((id) => id !== user?.id);
+
           setInfo({
             name: data.name || "Chat",
             avatar: data.avatar || null,
@@ -76,11 +76,11 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
         }
       } catch (err) {
         console.error("Failed to load conversation header info:", err);
-        setInfo({ 
-          name: "Chat", 
-          avatar: null, 
+        setInfo({
+          name: "Chat",
+          avatar: null,
           status: presence_status.OFFLINE,
-          participantCount: 2 
+          participantCount: 2,
         });
       } finally {
         setIsLoading(false);
@@ -94,21 +94,33 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
   useEffect(() => {
     if (!info?.opponentId || !is1on1) return;
 
-    console.log("👂 ChatHeader listening for status changes for opponent:", info.opponentId);
+    console.log(
+      "👂 ChatHeader listening for status changes for opponent:",
+      info.opponentId,
+    );
 
     const unsubscribe = ws.subscribe("STATUS_CHANGE", (payload) => {
       console.log("📡 ChatHeader received STATUS_CHANGE:", payload);
-      
+
       if (payload.userId === info.opponentId) {
-        console.log("✅ ChatHeader updating opponent status to:", payload.status);
-        setInfo(prev => prev ? {
-          ...prev,
-          status: payload.status as presence_status
-        } : null);
+        console.log(
+          "✅ ChatHeader updating opponent status to:",
+          payload.status,
+        );
+        setInfo((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: payload.status as presence_status,
+              }
+            : null,
+        );
       }
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe;
+    };
   }, [info?.opponentId, is1on1]);
 
   // ✅ Listen for typing events
@@ -117,21 +129,26 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
 
     const unsubscribe = ws.subscribe("USER_TYPING", (payload) => {
       console.log("⌨️ Received USER_TYPING:", payload);
-      
-      if (payload.conversationId === conversationId || payload.from === info?.opponentId) {
+
+      if (
+        payload.conversationId === conversationId ||
+        payload.conversationId === info?.opponentId
+      ) {
         setIsTyping(true);
         const timeout = setTimeout(() => setIsTyping(false), 3000);
         return () => clearTimeout(timeout);
       }
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe;
+    };
   }, [conversationId, isDraft, info?.opponentId]);
 
   // ✅ Get status indicator color
   const getStatusColor = () => {
     if (!is1on1) return "bg-gray-400";
-    
+
     switch (info?.status) {
       case presence_status.ONLINE:
         return "bg-green-500";
@@ -149,7 +166,12 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
   const avatar = info?.avatar;
   const status = info?.status || presence_status.OFFLINE;
 
-  console.log("🎨 Rendering header with:", { name, status, is1on1, opponentId: info?.opponentId });
+  console.log("🎨 Rendering header with:", {
+    name,
+    status,
+    is1on1,
+    opponentId: info?.opponentId,
+  });
 
   // ✅ Handle back button click
   const handleBack = () => {
@@ -183,10 +205,12 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
                   {getInitials(name)}
                 </AvatarFallback>
               </Avatar>
-              
+
               {is1on1 && (
                 <div className="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-background bg-background flex items-center justify-center">
-                  <div className={cn("w-2.5 h-2.5 rounded-full", getStatusColor())} />
+                  <div
+                    className={cn("w-2.5 h-2.5 rounded-full", getStatusColor())}
+                  />
                 </div>
               )}
             </div>
@@ -199,9 +223,18 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
                 <div className="flex items-center gap-1 mt-1">
                   <span className="text-xs text-primary italic">typing</span>
                   <span className="flex gap-0.5">
-                    <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    <span
+                      className="w-1 h-1 bg-primary rounded-full animate-bounce"
+                      style={{ animationDelay: "0ms" }}
+                    />
+                    <span
+                      className="w-1 h-1 bg-primary rounded-full animate-bounce"
+                      style={{ animationDelay: "150ms" }}
+                    />
+                    <span
+                      className="w-1 h-1 bg-primary rounded-full animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    />
                   </span>
                 </div>
               ) : is1on1 ? (
@@ -224,8 +257,8 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
           <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
             <Video className="w-5 h-5 text-muted-foreground" />
           </Button>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => setShowInfoSheet(true)}
           >

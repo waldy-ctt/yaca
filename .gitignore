@@ -23,3 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 release/
+
+.env
+.env.*
+dist/
+dist-electron/
+release/
+android/app/build/
+android/.gradle/

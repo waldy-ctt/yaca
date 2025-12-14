@@ -1,6 +1,6 @@
 // src/renderer/src/features/conversation/components/MessageList.tsx
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { MessageItem } from "./MessageItem";
 import { UIMessage, MessageModel, MessageDto } from "@/types";
 import { ws } from "@/lib/api";
@@ -19,7 +19,9 @@ export function MessageList({
 }: MessageListProps) {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedMessage, setSelectedMessage] = useState<UIMessage | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<UIMessage | null>(
+    null,
+  );
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
   const { user } = useAuthStore();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -55,7 +57,7 @@ export function MessageList({
       setIsLoading(true);
       try {
         const data = await apiGet<MessageDto>(
-          `/messages/conversation/${conversationId}?limit=50`,
+          `/messages/conversations/${conversationId}?limit=50`,
         );
         setMessages(data.data.reverse().map(enrichMessage));
       } catch (err) {
@@ -80,7 +82,9 @@ export function MessageList({
       );
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe;
+    };
   }, [user?.id]);
 
   // WebSocket: NEW_MESSAGE
@@ -94,19 +98,21 @@ export function MessageList({
 
       setMessages((prev) => {
         if (prev.some((m) => m.id === msg.id)) return prev;
-        
+
         const enrichedMsg = enrichMessage(msg);
-        
+
         setTimeout(
           () => scrollRef.current?.scrollIntoView({ behavior: "smooth" }),
           10,
         );
-        
+
         return [...prev, enrichedMsg];
       });
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe;
+    };
   }, [conversationId, user?.id]);
 
   // WebSocket: READ event
@@ -123,7 +129,9 @@ export function MessageList({
       );
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe;
+    };
   }, [conversationId, user?.id]);
 
   // ✅ NEW: WebSocket - MESSAGE_UPDATED (reactions)
@@ -132,15 +140,17 @@ export function MessageList({
 
     const unsubscribe = ws.subscribe("MESSAGE_UPDATED", (payload) => {
       const updatedMsg = payload.message;
-      
+
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === updatedMsg.id ? enrichMessage(updatedMsg) : m
-        )
+          m.id === updatedMsg.id ? enrichMessage(updatedMsg) : m,
+        ),
       );
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe;
+    };
   }, [conversationId, user?.id]);
 
   // ✅ NEW: WebSocket - MESSAGE_DELETED
@@ -151,7 +161,9 @@ export function MessageList({
       setMessages((prev) => prev.filter((m) => m.id !== payload.messageId));
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe;
+    };
   }, [conversationId]);
 
   // Auto-scroll on new messages
@@ -193,9 +205,9 @@ export function MessageList({
     <>
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 dark:bg-background/50">
         {messages.map((msg) => (
-          <MessageItem 
-            key={msg.id} 
-            message={msg} 
+          <MessageItem
+            key={msg.id}
+            message={msg}
             onClick={() => handleMessageClick(msg)}
           />
         ))}

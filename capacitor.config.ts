@@ -1,12 +1,11 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.waldy.yaca',
-  appName: 'yaca',
-  webDir: 'dist',
+  appId: 'com.yaca.chat',
+  appName: 'Yaca',
+  webDir: 'dist', // ⚠️ Crucial: Vite builds to 'dist'
   server: {
-    url: 'http://192.168.100.26:5173',
-    cleartext: true
+    androidScheme: 'https'
   }
 };
 

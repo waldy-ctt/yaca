@@ -77,7 +77,7 @@ export function ChatInput({
           return;
         }
 
-        const res = await apiPost<ConversationDto>("/conversation", {
+        const res = await apiPost<ConversationDto>("/conversations", {
           recipientId,
           content: trimmed,
           participants: [user.id, recipientId],
