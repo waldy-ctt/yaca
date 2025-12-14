@@ -97,13 +97,18 @@ export function MessageList({
     // ✅ FIXED: Listen for ACK (match by tempId)
     const unsubscribeAck = ws.subscribe("ACK", (payload) => {
       console.log("✅ ACK received:", payload);
+      console.log("   Expected conversationId:", conversationId);
+      console.log("   Received conversationId:", payload.message?.conversationId);
+      console.log("   TempId:", payload.tempId);
 
-      if (payload.message.conversationId === conversationId) {
-        setMessages((prev) =>
-          prev.map((m) => {
+      if (payload.message?.conversationId === conversationId) {
+        setMessages((prev) => {
+          console.log("   Current messages:", prev.map(m => ({ id: m.id, status: m.status })));
+          
+          return prev.map((m) => {
             // ✅ Match by tempId (the optimistic message ID)
             if (m.id === payload.tempId) {
-              console.log(`✅ Updating message ${m.id} → ${payload.message.id} to "sent"`);
+              console.log(`   ✅ MATCH FOUND! Updating ${m.id} → ${payload.message.id} to "sent"`);
               return {
                 ...m,
                 id: payload.message.id,        // Replace with real ID
@@ -112,8 +117,10 @@ export function MessageList({
               };
             }
             return m;
-          })
-        );
+          });
+        });
+      } else {
+        console.log("   ❌ ConversationId mismatch, skipping update");
       }
     });
 

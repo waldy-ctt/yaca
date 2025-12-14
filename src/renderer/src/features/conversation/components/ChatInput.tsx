@@ -103,6 +103,11 @@ export function ChatInput({
           status: "sending", // ✅ Start as "sending"
         };
 
+        console.log("📝 Creating optimistic message:");
+        console.log("   tempId:", tempId);
+        console.log("   conversationId:", conversationId);
+        console.log("   status:", optimisticMsg.status);
+
         // Add to UI immediately
         if (onOptimisticMessage) {
           onOptimisticMessage(optimisticMsg);
@@ -112,8 +117,7 @@ export function ChatInput({
         setMessage("");
 
         // ✅ Send via WebSocket with tempId
-        console.log("📤 Sending message via WebSocket with tempId:", tempId);
-        ws.send("SEND_MESSAGE", {
+        const wsPayload = {
           destinationId: conversationId,
           destinationType: "conversation",
           content: {
@@ -121,7 +125,10 @@ export function ChatInput({
             type: "text",
           },
           tempId: tempId, // ✅ Backend will echo this back in ACK
-        });
+        };
+        
+        console.log("📤 Sending via WebSocket:", wsPayload);
+        ws.send("SEND_MESSAGE", wsPayload);
       }
     } catch (error) {
       console.error("Failed to send message:", error);
