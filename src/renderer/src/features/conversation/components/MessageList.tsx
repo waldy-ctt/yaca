@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/renderer/src/features/conversation/components/MessageList.tsx
 
 import { useEffect, useState, useRef } from "react";
@@ -32,9 +33,7 @@ export function MessageList({
     createdAt: raw.createdAt,
     reaction: raw.reaction,
     senderId: raw.senderId,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     senderName: (raw as any).senderName,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     senderAvatar: (raw as any).senderAvatar,
     isMine: raw.senderId === user?.id,
     status: "read",
@@ -142,9 +141,8 @@ export function MessageList({
 
     // ✅ Listen for message deletions
     const unsubscribeDelete = ws.subscribe("MESSAGE_DELETED", (payload) => {
-      if (payload.conversationId === conversationId) {
-        setMessages((prev) => prev.filter((m) => m.id !== payload.messageId));
-      }
+      // MESSAGE_DELETED only has messageId, so just filter it out
+      setMessages((prev) => prev.filter((m) => m.id !== payload.messageId));
     });
 
     return () => {
