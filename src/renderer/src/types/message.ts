@@ -1,3 +1,5 @@
+// src/renderer/src/types/message.ts
+
 export interface MessageDto {
   data: {
     id: string;
@@ -7,12 +9,14 @@ export interface MessageDto {
       type: "text" | "image";
     };
     reaction: {
-      type: "like" | "heart";
+      type: "like" | "heart" | "laugh";
       sender: string;
     }[];
     senderId: string;
     createdAt: string;
     updatedAt: string;
+    senderName?: string;
+    senderAvatar?: string;
   }[];
   nextCursor?: string;
 }

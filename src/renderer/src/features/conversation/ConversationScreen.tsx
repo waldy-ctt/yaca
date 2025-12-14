@@ -3,11 +3,11 @@
 import { useParams, useSearch } from "@tanstack/react-router";
 import { ChatHeader } from "./components/ChatHeader";
 import { MessageList } from "./components/MessageList";
-import { ChatInput } from "./components/ChatInput";
 import { useConversationList } from "../conversationList/hooks/useConversationList";
 import { useEffect, useRef } from "react";
 import { ws } from "@/lib/api";
 import { UIMessage } from "@/types";
+import { ChatInput } from "./components/ChatInput";
 
 function ConversationScreen() {
   const { conversationId } = useParams({

@@ -26,10 +26,14 @@ export function MessageList({
   const { user } = useAuthStore();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // ✅ FIXED: Properly handle enriched messages from backend
   const enrichMessage = (msg: MessageModel): UIMessage => ({
     ...msg,
     isMine: msg.senderId === user?.id,
     status: "sent" as const,
+    // Backend already provides senderName and senderAvatar
+    senderName: msg.senderName,
+    senderAvatar: msg.senderAvatar,
   });
 
   const addOptimisticMessage = useCallback((msg: UIMessage) => {
@@ -56,9 +60,14 @@ export function MessageList({
 
       setIsLoading(true);
       try {
+        // ✅ FIXED: Correct endpoint path
         const data = await apiGet<MessageDto>(
-          `/messages/conversations/${conversationId}?limit=50`,
+          `/messages/conversation/${conversationId}?limit=50`,
         );
+        
+        console.log("📨 Fetched messages:", data);
+        
+        // ✅ Backend already provides enriched data
         setMessages(data.data.reverse().map(enrichMessage));
       } catch (err) {
         console.error("Failed to load messages:", err);
@@ -68,7 +77,7 @@ export function MessageList({
     };
 
     fetchMessages();
-  }, [conversationId]);
+  }, [conversationId, user?.id]);
 
   // WebSocket: ACK handler
   useEffect(() => {
@@ -134,7 +143,7 @@ export function MessageList({
     };
   }, [conversationId, user?.id]);
 
-  // ✅ NEW: WebSocket - MESSAGE_UPDATED (reactions)
+  // WebSocket - MESSAGE_UPDATED (reactions)
   useEffect(() => {
     if (conversationId === "new") return;
 
@@ -153,7 +162,7 @@ export function MessageList({
     };
   }, [conversationId, user?.id]);
 
-  // ✅ NEW: WebSocket - MESSAGE_DELETED
+  // WebSocket - MESSAGE_DELETED
   useEffect(() => {
     if (conversationId === "new") return;
 
@@ -171,13 +180,11 @@ export function MessageList({
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ✅ NEW: Handle message click
   const handleMessageClick = (message: UIMessage) => {
     setSelectedMessage(message);
     setIsDetailSheetOpen(true);
   };
 
-  // ✅ NEW: Handle message deletion
   const handleMessageDelete = () => {
     if (selectedMessage) {
       setMessages((prev) => prev.filter((m) => m.id !== selectedMessage.id));

@@ -110,7 +110,7 @@ export function ChatInput({
         // Clear input
         setMessage("");
 
-        // ✅ FIX: Send with correct structure matching backend
+        // ✅ FIX: Send with EXACT structure backend expects
         console.log("📤 Sending message via WebSocket");
         ws.send("SEND_MESSAGE", {
           destinationId: conversationId,
