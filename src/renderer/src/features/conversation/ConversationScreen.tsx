@@ -4,10 +4,11 @@ import { useParams, useSearch } from "@tanstack/react-router";
 import { ChatHeader } from "./components/ChatHeader";
 import { MessageList } from "./components/MessageList";
 import { useConversationList } from "../conversationList/hooks/useConversationList";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { ws } from "@/lib/api";
 import { UIMessage } from "@/types";
 import { ChatInput } from "./components/ChatInput";
+import { debug } from "@/lib/debug";
 
 function ConversationScreen() {
   const { conversationId } = useParams({
@@ -26,6 +27,12 @@ function ConversationScreen() {
     ws.send("READ", { conversationId });
   }, [conversationId, markAsRead]);
 
+  // ✅ CRITICAL: This callback captures the handler from MessageList
+  const handleOptimisticMessage = useCallback((handler: (msg: UIMessage) => void) => {
+    debug.message.info('🔗 ConversationScreen received handler from MessageList');
+    addOptimisticMessageRef.current = handler;
+  }, []);
+
   const isDraft = conversationId === "new";
   const recipientId = isDraft ? searchParams.recipientId : undefined;
 
@@ -35,9 +42,7 @@ function ConversationScreen() {
       
       <MessageList
         conversationId={conversationId}
-        onOptimisticMessageHandler={(handler) => {
-          addOptimisticMessageRef.current = handler;
-        }}
+        onOptimisticMessageHandler={handleOptimisticMessage}
       />
       
       <ChatInput
