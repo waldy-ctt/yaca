@@ -119,10 +119,10 @@ export function ChatInput({
         // ✅ Send via WebSocket with tempId
         const wsPayload = {
           destinationId: conversationId,
-          destinationType: "conversation",
+          destinationType: "conversation" as const,
           content: {
             data: trimmed,
-            type: "text",
+            type: "text" as const,
           },
           tempId: tempId, // ✅ Backend will echo this back in ACK
         };
