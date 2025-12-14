@@ -58,26 +58,18 @@ export function ChatInput({
     if (!trimmed || disabled || isSending) return;
     if (!user?.id) return;
 
-    console.group("📤 SEND MESSAGE");
-    console.log("Conversation ID:", conversationId);
-    console.log("Is Draft:", isDraft);
-    console.log("Content:", trimmed);
-
     stopTyping();
     if (typingTimer.current) clearTimeout(typingTimer.current);
 
-    const tempId = crypto.randomUUID();
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setIsSending(true);
 
     try {
       if (isDraft) {
         if (!recipientId) {
           console.error("❌ Cannot send: recipientId missing for draft");
-          console.groupEnd();
           return;
         }
-
-        console.log("📝 Creating new conversation with recipient:", recipientId);
 
         const res = await apiPost<ConversationDto>("/conversations", {
           recipientId,
@@ -88,7 +80,6 @@ export function ChatInput({
         });
 
         if (res && res.id) {
-          console.log("✅ New conversation created:", res.id);
           setMessage("");
           await router.navigate({
             to: `${ROUTES.CONVERSATION}/$conversationId`,
@@ -109,17 +100,12 @@ export function ChatInput({
           status: "sending",
         };
 
-        console.log("🎯 Created optimistic message with tempId:", tempId);
-
         // Add to UI immediately
         if (onOptimisticMessage) {
-          console.log("➕ Adding optimistic message to UI");
           onOptimisticMessage(optimisticMsg);
-        } else {
-          console.warn("⚠️ onOptimisticMessage handler not available!");
         }
 
-        // Clear input
+        // Clear input immediately for better UX
         setMessage("");
 
         // Send via WebSocket
@@ -133,15 +119,15 @@ export function ChatInput({
           tempId: tempId,
         };
         
-        console.log("📡 Sending via WebSocket:", wsPayload);
         ws.send("SEND_MESSAGE", wsPayload);
       }
     } catch (error) {
       console.error("❌ Failed to send message:", error);
+      // Re-add message to input on error
+      setMessage(trimmed);
     } finally {
       setIsSending(false);
       inputRef.current?.focus();
-      console.groupEnd();
     }
   };
 

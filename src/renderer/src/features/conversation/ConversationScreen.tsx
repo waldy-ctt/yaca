@@ -8,7 +8,6 @@ import { useEffect, useRef, useCallback } from "react";
 import { ws } from "@/lib/api";
 import { UIMessage } from "@/types";
 import { ChatInput } from "./components/ChatInput";
-import { debug } from "@/lib/debug";
 
 function ConversationScreen() {
   const { conversationId } = useParams({
@@ -29,7 +28,6 @@ function ConversationScreen() {
 
   // ✅ CRITICAL: This callback captures the handler from MessageList
   const handleOptimisticMessage = useCallback((handler: (msg: UIMessage) => void) => {
-    debug.message.info('🔗 ConversationScreen received handler from MessageList');
     addOptimisticMessageRef.current = handler;
   }, []);
 
