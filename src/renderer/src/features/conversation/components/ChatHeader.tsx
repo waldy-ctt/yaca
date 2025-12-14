@@ -90,6 +90,37 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
     fetchInfo();
   }, [conversationId, recipientId, isDraft, user?.id]);
 
+  const testWebSocket = () => {
+    console.log("🧪 Testing WebSocket...");
+
+    const socket = ws.getSocket();
+    console.log("Socket state:", socket?.readyState);
+
+    if (!socket) {
+      console.error("❌ No socket!");
+      return;
+    }
+
+    if (socket.readyState !== WebSocket.OPEN) {
+      console.error("❌ Socket not open! State:", socket.readyState);
+      return;
+    }
+
+    console.log("✅ Socket is open, sending test message...");
+
+    ws.send("SEND_MESSAGE", {
+      destinationId: conversationId,
+      destinationType: "conversation",
+      content: {
+        data: "TEST MESSAGE FROM BUTTON",
+        type: "text",
+      },
+      tempId: `test_${Date.now()}`,
+    });
+
+    console.log("📤 Test message sent!");
+  };
+
   // ✅ Listen for real-time status changes
   useEffect(() => {
     if (!info?.opponentId || !is1on1) return;
@@ -166,12 +197,12 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
   const avatar = info?.avatar;
   const status = info?.status || presence_status.OFFLINE;
 
-  console.log("🎨 Rendering header with:", {
-    name,
-    status,
-    is1on1,
-    opponentId: info?.opponentId,
-  });
+  // console.log("🎨 Rendering header with:", {
+  //   name,
+  //   status,
+  //   is1on1,
+  //   opponentId: info?.opponentId,
+  // });
 
   // ✅ Handle back button click
   const handleBack = () => {
@@ -214,6 +245,15 @@ export function ChatHeader({ conversationId, recipientId }: ChatHeaderProps) {
                 </div>
               )}
             </div>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={testWebSocket}
+              title="Test WebSocket"
+            >
+              🧪
+            </Button>
 
             <div className="flex flex-col justify-center">
               <h2 className="text-sm font-semibold leading-none">{name}</h2>

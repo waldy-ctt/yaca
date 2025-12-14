@@ -178,8 +178,8 @@ export function useConversationList() {
 
   const markAsRead = useCallback(
     (conversationId: string) => {
-      console.log(`✅ [markAsRead] Called for ${conversationId}`);
-      console.log(`   Current unread counts:`, unreadCounts);
+      // console.log(`✅ [markAsRead] Called for ${conversationId}`);
+      // console.log(`   Current unread counts:`, unreadCounts);
 
       setUnreadCounts((prev) => {
         const updated = { ...prev };

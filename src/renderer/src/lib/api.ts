@@ -5,7 +5,7 @@ import { MessageModel } from "@/types";
 import { router } from "@/routes";
 
 // -------------------------------------------------------------------------
-// 1. REST API WRAPPER
+// REST API
 // -------------------------------------------------------------------------
 
 class ApiError extends Error {
@@ -70,7 +70,7 @@ export const apiPut = <T, B = unknown>(url: string, body?: B) =>
 export const apiDelete = <T>(url: string) => api<T>(url, { method: "DELETE" });
 
 // -------------------------------------------------------------------------
-// 2. WEBSOCKET SERVICE
+// WEBSOCKET - MINIMAL VERSION
 // -------------------------------------------------------------------------
 
 export interface WebSocketEventMap {
@@ -83,7 +83,7 @@ export interface WebSocketEventMap {
   STATUS_CHANGE: {
     userId: string;
     status: "online" | "offline" | "sleep" | "dnd";
-  }; // ✅ NEW
+  };
   ERROR: { error: string };
 }
 
@@ -112,33 +112,49 @@ class WebSocketService {
   private isIntentionalClose = false;
   private handlers = new Map<string, Set<(data: unknown) => void>>();
 
+  public getSocket() {
+    return this.socket;
+  }
+
   public connect() {
     const { token } = useAuthStore.getState();
-    if (!token) return;
+    if (!token) {
+      console.error("❌ WS: No token");
+      return;
+    }
 
-    if (this.socket?.readyState === WebSocket.OPEN) return;
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      console.log("✅ WS: Already connected");
+      return;
+    }
 
     this.isIntentionalClose = false;
     const url = `${WS_BASE}/ws/${token}`;
+
+    console.log("🔌 WS: Connecting to", url);
     this.socket = new WebSocket(url);
 
     this.socket.onopen = () => {
-      console.log("✅ WebSocket connected");
+      console.log("✅ WS: CONNECTED");
       if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     };
 
     this.socket.onmessage = (event) => {
       try {
-        const { type, ...payload } = JSON.parse(event.data);
-        console.log("📨 WS Event:", type, payload);
+        const parsed = JSON.parse(event.data);
+        const { type, ...payload } = parsed;
+
+        console.log("📨 WS ←", type);
+
         this.handlers.get(type)?.forEach((handler) => handler(payload));
-      } catch {
-        // ignore malformed messages
+      } catch (e) {
+        console.error("❌ WS parse error:", e);
       }
     };
 
     this.socket.onclose = (event) => {
-      console.log("❌ WebSocket disconnected");
+      console.log("❌ WS: CLOSED", event.code);
+
       if (this.isIntentionalClose) return;
 
       if (event.code === 4001 || event.code === 4003) {
@@ -146,13 +162,19 @@ class WebSocketService {
         return;
       }
 
-      this.reconnectTimer = setTimeout(() => this.connect(), 3000);
+      this.reconnectTimer = setTimeout(() => {
+        console.log("🔄 WS: Reconnecting...");
+        this.connect();
+      }, 3000);
     };
 
-    this.socket.onerror = () => this.socket?.close();
+    this.socket.onerror = (error) => {
+      console.error("❌ WS error:", error);
+    };
   }
 
   public disconnect() {
+    console.log("🔌 WS: Disconnecting");
     this.isIntentionalClose = true;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.socket?.close();
@@ -160,9 +182,14 @@ class WebSocketService {
   }
 
   public send<K extends WSEmitType>(type: K, payload: WebSocketEmitMap[K]) {
-    if (this.socket?.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({ type, ...payload }));
+    if (this.socket?.readyState !== WebSocket.OPEN) {
+      console.error("❌ WS: Not connected! Cannot send:", type);
+      return;
     }
+
+    const message = { type, ...payload };
+    console.log("📤 WS →", type);
+    this.socket.send(JSON.stringify(message));
   }
 
   public subscribe<K extends WSEventType>(type: K, handler: WSHandler<K>) {
