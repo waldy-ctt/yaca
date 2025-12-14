@@ -28,21 +28,19 @@ export function ChatInput({
   const [isSending, setIsSending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const typingTimer = useRef<NodeJS.Timeout | null>(null);
-  const isTypingRef = useRef(false); // Track if we're currently "typing"
+  const isTypingRef = useRef(false);
   const { user } = useAuthStore();
 
-  const TYPING_DELAY = 2000; // Stop typing after 2s of no input
+  const TYPING_DELAY = 2000;
   const isDraft = conversationId === "new";
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // ✅ Send typing indicator
   const sendTyping = () => {
-    if (isDraft) return; // Don't send typing for drafts
+    if (isDraft) return;
     
-    // Only send if we're not already in "typing" state
     if (!isTypingRef.current) {
       console.log("⌨️ Sending TYPING event for conversation:", conversationId);
       ws.send("TYPING", { conversationId });
@@ -50,7 +48,6 @@ export function ChatInput({
     }
   };
 
-  // ✅ Stop typing indicator
   const stopTyping = () => {
     if (isTypingRef.current) {
       console.log("🛑 Stopping typing indicator");
@@ -63,7 +60,6 @@ export function ChatInput({
     if (!trimmed || disabled || isSending) return;
     if (!user?.id) return;
 
-    // Clear typing state before sending
     stopTyping();
     if (typingTimer.current) clearTimeout(typingTimer.current);
 
@@ -94,7 +90,7 @@ export function ChatInput({
           });
         }
       } else {
-        // Create optimistic message
+        // ✅ FIX: Create optimistic message
         const optimisticMsg: UIMessage = {
           id: tempId,
           content: { content: trimmed, type: "text" },
@@ -114,15 +110,15 @@ export function ChatInput({
         // Clear input
         setMessage("");
 
-        // Send via WebSocket
+        // ✅ FIX: Send with correct structure matching backend
         console.log("📤 Sending message via WebSocket");
         ws.send("SEND_MESSAGE", {
-          content: {
-            data: trimmed,
-            type: "text",
-          },
           destinationId: conversationId,
           destinationType: "conversation",
+          content: {
+            data: trimmed,      // ✅ Backend expects "data" not "content"
+            type: "text",
+          },
           tempId: tempId,
         });
       }
@@ -140,21 +136,17 @@ export function ChatInput({
 
     if (isDraft) return;
 
-    // Clear existing timer
     if (typingTimer.current) {
       clearTimeout(typingTimer.current);
     }
 
     if (value.trim()) {
-      // Send typing indicator
       sendTyping();
       
-      // Set timer to stop typing after delay
       typingTimer.current = setTimeout(() => {
         stopTyping();
       }, TYPING_DELAY);
     } else {
-      // Empty input = stop typing immediately
       stopTyping();
     }
   };
@@ -166,7 +158,6 @@ export function ChatInput({
     }
   };
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (typingTimer.current) clearTimeout(typingTimer.current);
