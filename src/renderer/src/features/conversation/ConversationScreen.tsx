@@ -20,19 +20,10 @@ function ConversationScreen() {
 
   // ✅ Mark as read whenever conversation changes
   useEffect(() => {
-    if (!conversationId || conversationId === "new") {
-      console.log("⏭️ Skipping read: draft or no conversation");
-      return;
-    }
+    if (!conversationId || conversationId === "new") return;
 
-    console.log(`📖 [ConversationScreen] Marking ${conversationId} as read`);
-    console.log(`📖 [ConversationScreen] Calling markAsRead...`);
     markAsRead(conversationId);
-    
-    console.log(`📖 [ConversationScreen] Sending READ via WebSocket...`);
     ws.send("READ", { conversationId });
-    
-    console.log(`✅ [ConversationScreen] Read actions completed for ${conversationId}`);
   }, [conversationId, markAsRead]);
 
   const isDraft = conversationId === "new";

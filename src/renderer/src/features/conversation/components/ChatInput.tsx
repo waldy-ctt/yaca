@@ -42,7 +42,6 @@ export function ChatInput({
     if (isDraft) return;
     
     if (!isTypingRef.current) {
-      console.log("⌨️ Sending TYPING event for conversation:", conversationId);
       ws.send("TYPING", { conversationId });
       isTypingRef.current = true;
     }
@@ -50,7 +49,6 @@ export function ChatInput({
 
   const stopTyping = () => {
     if (isTypingRef.current) {
-      console.log("🛑 Stopping typing indicator");
       isTypingRef.current = false;
     }
   };
@@ -60,19 +58,26 @@ export function ChatInput({
     if (!trimmed || disabled || isSending) return;
     if (!user?.id) return;
 
+    console.group("📤 SEND MESSAGE");
+    console.log("Conversation ID:", conversationId);
+    console.log("Is Draft:", isDraft);
+    console.log("Content:", trimmed);
+
     stopTyping();
     if (typingTimer.current) clearTimeout(typingTimer.current);
 
-    // ✅ Generate tempId for optimistic message
     const tempId = crypto.randomUUID();
     setIsSending(true);
 
     try {
       if (isDraft) {
         if (!recipientId) {
-          console.error("Cannot send: recipientId missing for draft");
+          console.error("❌ Cannot send: recipientId missing for draft");
+          console.groupEnd();
           return;
         }
+
+        console.log("📝 Creating new conversation with recipient:", recipientId);
 
         const res = await apiPost<ConversationDto>("/conversations", {
           recipientId,
@@ -83,6 +88,7 @@ export function ChatInput({
         });
 
         if (res && res.id) {
+          console.log("✅ New conversation created:", res.id);
           setMessage("");
           await router.navigate({
             to: `${ROUTES.CONVERSATION}/$conversationId`,
@@ -91,32 +97,32 @@ export function ChatInput({
           });
         }
       } else {
-        // ✅ Create optimistic message with tempId
+        // Create optimistic message
         const optimisticMsg: UIMessage = {
-          id: tempId, // ✅ This matches the tempId sent to backend
+          id: tempId,
           content: { content: trimmed, type: "text" },
           conversationId,
           senderId: user.id,
           createdAt: new Date().toISOString(),
           reaction: [],
           isMine: true,
-          status: "sending", // ✅ Start as "sending"
+          status: "sending",
         };
 
-        console.log("📝 Creating optimistic message:");
-        console.log("   tempId:", tempId);
-        console.log("   conversationId:", conversationId);
-        console.log("   status:", optimisticMsg.status);
+        console.log("🎯 Created optimistic message with tempId:", tempId);
 
         // Add to UI immediately
         if (onOptimisticMessage) {
+          console.log("➕ Adding optimistic message to UI");
           onOptimisticMessage(optimisticMsg);
+        } else {
+          console.warn("⚠️ onOptimisticMessage handler not available!");
         }
 
         // Clear input
         setMessage("");
 
-        // ✅ Send via WebSocket with tempId
+        // Send via WebSocket
         const wsPayload = {
           destinationId: conversationId,
           destinationType: "conversation" as const,
@@ -124,17 +130,18 @@ export function ChatInput({
             data: trimmed,
             type: "text" as const,
           },
-          tempId: tempId, // ✅ Backend will echo this back in ACK
+          tempId: tempId,
         };
         
-        console.log("📤 Sending via WebSocket:", wsPayload);
+        console.log("📡 Sending via WebSocket:", wsPayload);
         ws.send("SEND_MESSAGE", wsPayload);
       }
     } catch (error) {
-      console.error("Failed to send message:", error);
+      console.error("❌ Failed to send message:", error);
     } finally {
       setIsSending(false);
       inputRef.current?.focus();
+      console.groupEnd();
     }
   };
 

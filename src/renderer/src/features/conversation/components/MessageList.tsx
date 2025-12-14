@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/renderer/src/features/conversation/components/MessageList.tsx
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { MessageItem } from "./MessageItem";
 import { apiGet, ws } from "@/lib/api";
 import { MessageDto, UIMessage, MessageModel } from "@/types";
@@ -22,11 +22,10 @@ export function MessageList({
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<UIMessage | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-
   const isDraft = conversationId === "new";
 
   // Map backend message to UI message
-  const mapToUIMessage = (raw: MessageModel): UIMessage => ({
+  const mapToUIMessage = useCallback((raw: MessageModel): UIMessage => ({
     id: raw.id,
     content: raw.content,
     conversationId: raw.conversationId,
@@ -37,14 +36,17 @@ export function MessageList({
     senderAvatar: (raw as any).senderAvatar,
     isMine: raw.senderId === user?.id,
     status: "read",
-  });
+  }), [user?.id]);
 
   // ✅ Expose handler for optimistic messages
   useEffect(() => {
     if (onOptimisticMessageHandler) {
       onOptimisticMessageHandler((msg: UIMessage) => {
-        console.log("➕ Adding optimistic message:", msg.id);
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => {
+          // Prevent duplicates
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
         setTimeout(() => scrollToBottom(), 50);
       });
     }
@@ -53,9 +55,12 @@ export function MessageList({
   // Initial load
   useEffect(() => {
     if (isDraft) {
+      setMessages([]);
       setIsLoading(false);
       return;
     }
+
+    let isMounted = true;
 
     const loadMessages = async () => {
       setIsLoading(true);
@@ -63,22 +68,31 @@ export function MessageList({
         const data = await apiGet<MessageDto>(
           `/messages/conversation/${conversationId}`
         );
-        setMessages(data.data.map(mapToUIMessage).reverse());
+        
+        if (isMounted) {
+          setMessages(data.data.map(mapToUIMessage).reverse());
+        }
       } catch (error) {
         console.error("Failed to load messages:", error);
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadMessages();
-  }, [conversationId, user?.id, isDraft]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [conversationId, isDraft, mapToUIMessage]);
 
   // WebSocket listeners
   useEffect(() => {
     if (isDraft) return;
 
-    // ✅ Listen for new messages
+    // ✅ NEW_MESSAGE: Add new messages
     const unsubscribeNew = ws.subscribe("NEW_MESSAGE", (payload) => {
       const rawMsg = payload.message as MessageModel;
 
@@ -86,6 +100,7 @@ export function MessageList({
         const uiMsg = mapToUIMessage(rawMsg);
 
         setMessages((prev) => {
+          // Prevent duplicates
           if (prev.some((m) => m.id === uiMsg.id)) return prev;
           return [...prev, uiMsg];
         });
@@ -94,24 +109,16 @@ export function MessageList({
       }
     });
 
-    // ✅ FIXED: Listen for ACK (match by tempId)
+    // ✅ ACK: Update optimistic message with real ID
     const unsubscribeAck = ws.subscribe("ACK", (payload) => {
-      console.log("✅ ACK received:", payload);
-      console.log("   Expected conversationId:", conversationId);
-      console.log("   Received conversationId:", payload.message?.conversationId);
-      console.log("   TempId:", payload.tempId);
-
       if (payload.message?.conversationId === conversationId) {
         setMessages((prev) => {
-          console.log("   Current messages:", prev.map(m => ({ id: m.id, status: m.status })));
-          
           return prev.map((m) => {
-            // ✅ Match by tempId (the optimistic message ID)
+            // Match by tempId (the optimistic message ID)
             if (m.id === payload.tempId) {
-              console.log(`   ✅ MATCH FOUND! Updating ${m.id} → ${payload.message.id} to "sent"`);
               return {
                 ...m,
-                id: payload.message.id,        // Replace with real ID
+                id: payload.message.id,
                 status: "sent",
                 createdAt: payload.message.createdAt,
               };
@@ -119,15 +126,11 @@ export function MessageList({
             return m;
           });
         });
-      } else {
-        console.log("   ❌ ConversationId mismatch, skipping update");
       }
     });
 
-    // ✅ NEW: Listen for message updates (reactions, edits)
+    // ✅ MESSAGE_UPDATED: Handle reactions and edits
     const unsubscribeUpdate = ws.subscribe("MESSAGE_UPDATED", (payload) => {
-      console.log("🔄 MESSAGE_UPDATED received:", payload);
-
       const updatedMessage = payload.message as MessageModel;
 
       if (updatedMessage.conversationId === conversationId) {
@@ -146,29 +149,28 @@ export function MessageList({
       }
     });
 
-    // ✅ Listen for message deletions
+    // ✅ MESSAGE_DELETED: Remove deleted messages
     const unsubscribeDelete = ws.subscribe("MESSAGE_DELETED", (payload) => {
-      // MESSAGE_DELETED only has messageId, so just filter it out
       setMessages((prev) => prev.filter((m) => m.id !== payload.messageId));
     });
 
     return () => {
       unsubscribeNew();
       unsubscribeAck();
-      unsubscribeUpdate(); // ✅ Don't forget this!
+      unsubscribeUpdate();
       unsubscribeDelete();
     };
-  }, [conversationId, user?.id, isDraft]);
+  }, [conversationId, isDraft, mapToUIMessage]);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
-  const handleDeleteMessage = () => {
+  const handleDeleteMessage = useCallback(() => {
     if (!selectedMessage) return;
     setMessages((prev) => prev.filter((m) => m.id !== selectedMessage.id));
     setSelectedMessage(null);
-  };
+  }, [selectedMessage]);
 
   if (isLoading) {
     return (
