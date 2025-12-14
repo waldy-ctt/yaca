@@ -1,4 +1,4 @@
-package com.waldy.yaca;
+package com.yaca.chat;
 
 import com.getcapacitor.BridgeActivity;
 
