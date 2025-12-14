@@ -1,4 +1,4 @@
-// src/features/conversation/components/ChatInput.tsx
+// src/renderer/src/features/conversation/components/ChatInput.tsx
 
 import { useState, useRef, useEffect } from "react";
 import { Send, Smile, Plus } from "lucide-react";
@@ -63,6 +63,7 @@ export function ChatInput({
     stopTyping();
     if (typingTimer.current) clearTimeout(typingTimer.current);
 
+    // ✅ Generate tempId for optimistic message
     const tempId = crypto.randomUUID();
     setIsSending(true);
 
@@ -90,16 +91,16 @@ export function ChatInput({
           });
         }
       } else {
-        // ✅ FIX: Create optimistic message
+        // ✅ Create optimistic message with tempId
         const optimisticMsg: UIMessage = {
-          id: tempId,
+          id: tempId, // ✅ This matches the tempId sent to backend
           content: { content: trimmed, type: "text" },
           conversationId,
           senderId: user.id,
           createdAt: new Date().toISOString(),
           reaction: [],
           isMine: true,
-          status: "sending",
+          status: "sending", // ✅ Start as "sending"
         };
 
         // Add to UI immediately
@@ -110,16 +111,16 @@ export function ChatInput({
         // Clear input
         setMessage("");
 
-        // ✅ FIX: Send with EXACT structure backend expects
-        console.log("📤 Sending message via WebSocket");
+        // ✅ Send via WebSocket with tempId
+        console.log("📤 Sending message via WebSocket with tempId:", tempId);
         ws.send("SEND_MESSAGE", {
           destinationId: conversationId,
           destinationType: "conversation",
           content: {
-            data: trimmed,      // ✅ Backend expects "data" not "content"
+            data: trimmed,
             type: "text",
           },
-          tempId: tempId,
+          tempId: tempId, // ✅ Backend will echo this back in ACK
         });
       }
     } catch (error) {

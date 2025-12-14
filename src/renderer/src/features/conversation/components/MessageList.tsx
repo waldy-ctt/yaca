@@ -1,10 +1,9 @@
 // src/renderer/src/features/conversation/components/MessageList.tsx
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { MessageItem } from "./MessageItem";
-import { UIMessage, MessageModel, MessageDto } from "@/types";
-import { ws } from "@/lib/api";
-import { apiGet } from "@/lib/api";
+import { apiGet, ws } from "@/lib/api";
+import { MessageDto, UIMessage, MessageModel } from "@/types";
 import { useAuthStore } from "@/stores/authStore";
 import { MessageDetailSheet } from "./MessageDetailSheet";
 
@@ -17,215 +16,189 @@ export function MessageList({
   conversationId,
   onOptimisticMessageHandler,
 }: MessageListProps) {
+  const { user } = useAuthStore();
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedMessage, setSelectedMessage] = useState<UIMessage | null>(
-    null,
-  );
-  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
-  const { user } = useAuthStore();
+  const [selectedMessage, setSelectedMessage] = useState<UIMessage | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // ✅ FIXED: Properly handle enriched messages from backend
-  const enrichMessage = (msg: MessageModel): UIMessage => ({
-    ...msg,
-    isMine: msg.senderId === user?.id,
-    status: "sent" as const,
-    // Backend already provides senderName and senderAvatar
-    senderName: msg.senderName,
-    senderAvatar: msg.senderAvatar,
+  const isDraft = conversationId === "new";
+
+  // Map backend message to UI message
+  const mapToUIMessage = (raw: MessageModel): UIMessage => ({
+    id: raw.id,
+    content: raw.content,
+    conversationId: raw.conversationId,
+    createdAt: raw.createdAt,
+    reaction: raw.reaction,
+    senderId: raw.senderId,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    senderName: (raw as any).senderName,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    senderAvatar: (raw as any).senderAvatar,
+    isMine: raw.senderId === user?.id,
+    status: "read",
   });
 
-  const addOptimisticMessage = useCallback((msg: UIMessage) => {
-    setMessages((prev) => [...prev, msg]);
-    setTimeout(
-      () => scrollRef.current?.scrollIntoView({ behavior: "smooth" }),
-      10,
-    );
-  }, []);
-
+  // ✅ Expose handler for optimistic messages
   useEffect(() => {
     if (onOptimisticMessageHandler) {
-      onOptimisticMessageHandler(addOptimisticMessage);
+      onOptimisticMessageHandler((msg: UIMessage) => {
+        console.log("➕ Adding optimistic message:", msg.id);
+        setMessages((prev) => [...prev, msg]);
+        setTimeout(() => scrollToBottom(), 50);
+      });
     }
-  }, [onOptimisticMessageHandler, addOptimisticMessage]);
+  }, [onOptimisticMessageHandler]);
 
-  // Initial fetch
+  // Initial load
   useEffect(() => {
-    const fetchMessages = async () => {
-      if (conversationId === "new") {
-        setIsLoading(false);
-        return;
-      }
+    if (isDraft) {
+      setIsLoading(false);
+      return;
+    }
 
+    const loadMessages = async () => {
       setIsLoading(true);
       try {
-        // ✅ FIXED: Correct endpoint path
         const data = await apiGet<MessageDto>(
-          `/messages/conversation/${conversationId}?limit=50`,
+          `/messages/conversation/${conversationId}`
         );
-        
-        console.log("📨 Fetched messages:", data);
-        
-        // ✅ Backend already provides enriched data
-        setMessages(data.data.reverse().map(enrichMessage));
-      } catch (err) {
-        console.error("Failed to load messages:", err);
+        setMessages(data.data.map(mapToUIMessage).reverse());
+      } catch (error) {
+        console.error("Failed to load messages:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchMessages();
-  }, [conversationId, user?.id]);
+    loadMessages();
+  }, [conversationId, user?.id, isDraft]);
 
-  // WebSocket: ACK handler
+  // WebSocket listeners
   useEffect(() => {
-    const unsubscribe = ws.subscribe("ACK", ({ tempId, message }) => {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === tempId
-            ? { ...enrichMessage(message), status: "sent" as const }
-            : m,
-        ),
-      );
+    if (isDraft) return;
+
+    // ✅ Listen for new messages
+    const unsubscribeNew = ws.subscribe("NEW_MESSAGE", (payload) => {
+      const rawMsg = payload.message as MessageModel;
+
+      if (rawMsg.conversationId === conversationId) {
+        const uiMsg = mapToUIMessage(rawMsg);
+
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === uiMsg.id)) return prev;
+          return [...prev, uiMsg];
+        });
+
+        setTimeout(() => scrollToBottom(), 100);
+      }
     });
 
-    return () => {
-      unsubscribe;
-    };
-  }, [user?.id]);
+    // ✅ FIXED: Listen for ACK (match by tempId)
+    const unsubscribeAck = ws.subscribe("ACK", (payload) => {
+      console.log("✅ ACK received:", payload);
 
-  // WebSocket: NEW_MESSAGE
-  useEffect(() => {
-    if (conversationId === "new") return;
-
-    const unsubscribe = ws.subscribe("NEW_MESSAGE", (payload) => {
-      const msg = payload.message;
-
-      if (msg.conversationId !== conversationId) return;
-
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === msg.id)) return prev;
-
-        const enrichedMsg = enrichMessage(msg);
-
-        setTimeout(
-          () => scrollRef.current?.scrollIntoView({ behavior: "smooth" }),
-          10,
+      if (payload.message.conversationId === conversationId) {
+        setMessages((prev) =>
+          prev.map((m) => {
+            // ✅ Match by tempId (the optimistic message ID)
+            if (m.id === payload.tempId) {
+              console.log(`✅ Updating message ${m.id} → ${payload.message.id} to "sent"`);
+              return {
+                ...m,
+                id: payload.message.id,        // Replace with real ID
+                status: "sent",
+                createdAt: payload.message.createdAt,
+              };
+            }
+            return m;
+          })
         );
+      }
+    });
 
-        return [...prev, enrichedMsg];
-      });
+    // ✅ NEW: Listen for message updates (reactions, edits)
+    const unsubscribeUpdate = ws.subscribe("MESSAGE_UPDATED", (payload) => {
+      console.log("🔄 MESSAGE_UPDATED received:", payload);
+
+      const updatedMessage = payload.message as MessageModel;
+
+      if (updatedMessage.conversationId === conversationId) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === updatedMessage.id
+              ? {
+                  ...m,
+                  reaction: updatedMessage.reaction,
+                  content: updatedMessage.content,
+                  updatedAt: updatedMessage.updatedAt,
+                }
+              : m
+          )
+        );
+      }
+    });
+
+    // ✅ Listen for message deletions
+    const unsubscribeDelete = ws.subscribe("MESSAGE_DELETED", (payload) => {
+      if (payload.conversationId === conversationId) {
+        setMessages((prev) => prev.filter((m) => m.id !== payload.messageId));
+      }
     });
 
     return () => {
-      unsubscribe;
+      unsubscribeNew();
+      unsubscribeAck();
+      unsubscribeUpdate(); // ✅ Don't forget this!
+      unsubscribeDelete();
     };
-  }, [conversationId, user?.id]);
+  }, [conversationId, user?.id, isDraft]);
 
-  // WebSocket: READ event
-  useEffect(() => {
-    if (conversationId === "new") return;
-
-    const unsubscribe = ws.subscribe("READ", ({ conversationId: cid }) => {
-      if (cid !== conversationId) return;
-
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.senderId === user?.id ? { ...m, status: "read" as const } : m,
-        ),
-      );
-    });
-
-    return () => {
-      unsubscribe;
-    };
-  }, [conversationId, user?.id]);
-
-  // WebSocket - MESSAGE_UPDATED (reactions)
-  useEffect(() => {
-    if (conversationId === "new") return;
-
-    const unsubscribe = ws.subscribe("MESSAGE_UPDATED", (payload) => {
-      const updatedMsg = payload.message;
-
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === updatedMsg.id ? enrichMessage(updatedMsg) : m,
-        ),
-      );
-    });
-
-    return () => {
-      unsubscribe;
-    };
-  }, [conversationId, user?.id]);
-
-  // WebSocket - MESSAGE_DELETED
-  useEffect(() => {
-    if (conversationId === "new") return;
-
-    const unsubscribe = ws.subscribe("MESSAGE_DELETED", (payload) => {
-      setMessages((prev) => prev.filter((m) => m.id !== payload.messageId));
-    });
-
-    return () => {
-      unsubscribe;
-    };
-  }, [conversationId]);
-
-  // Auto-scroll on new messages
-  useEffect(() => {
+  const scrollToBottom = () => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const handleMessageClick = (message: UIMessage) => {
-    setSelectedMessage(message);
-    setIsDetailSheetOpen(true);
   };
 
-  const handleMessageDelete = () => {
-    if (selectedMessage) {
-      setMessages((prev) => prev.filter((m) => m.id !== selectedMessage.id));
-    }
+  const handleDeleteMessage = () => {
+    if (!selectedMessage) return;
+    setMessages((prev) => prev.filter((m) => m.id !== selectedMessage.id));
+    setSelectedMessage(null);
   };
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground">
-        Loading messages...
-      </div>
-    );
-  }
-
-  if (messages.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-muted-foreground opacity-50">
-        <p className="text-sm">No messages yet.</p>
-        <p className="text-xs">Start the conversation!</p>
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-muted-foreground">Loading messages...</p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 dark:bg-background/50">
-        {messages.map((msg) => (
-          <MessageItem
-            key={msg.id}
-            message={msg}
-            onClick={() => handleMessageClick(msg)}
-          />
-        ))}
-        <div ref={scrollRef} className="h-px" />
+      <div className="flex-1 overflow-y-auto bg-background">
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <p>No messages yet. Start the conversation!</p>
+          </div>
+        ) : (
+          <div className="py-4 space-y-2">
+            {messages.map((msg) => (
+              <MessageItem
+                key={msg.id}
+                message={msg}
+                onClick={() => setSelectedMessage(msg)}
+              />
+            ))}
+            <div ref={scrollRef} />
+          </div>
+        )}
       </div>
 
       <MessageDetailSheet
-        isOpen={isDetailSheetOpen}
-        onClose={() => setIsDetailSheetOpen(false)}
+        isOpen={!!selectedMessage}
+        onClose={() => setSelectedMessage(null)}
         message={selectedMessage}
-        onDelete={handleMessageDelete}
+        onDelete={handleDeleteMessage}
       />
     </>
   );
